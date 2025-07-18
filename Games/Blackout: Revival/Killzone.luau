@@ -3,7 +3,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- UI and Settings
+-- Load Rayfield UI Library
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
     Name = "Lime.Cheat | KillAura",
@@ -17,17 +17,19 @@ local Window = Rayfield:CreateWindow({
 
 local CombatTab = Window:CreateTab("Combat", 123456)
 
+-- Settings with defaults
 local Settings = {
     KillAuraEnabled = false,
     KillAuraRange = 10,
     KillAuraTargetPart = "Head",
+    AttackCooldown = 0.3,
 }
 
--- Dropdown for target part
+-- UI Elements
 CombatTab:CreateDropdown({
     Name = "Target Body Part",
     Options = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"},
-    CurrentOption = "Head",
+    CurrentOption = Settings.KillAuraTargetPart,
     Flag = "KillAuraTargetPart",
     Callback = function(Option)
         Settings.KillAuraTargetPart = Option
@@ -35,10 +37,9 @@ CombatTab:CreateDropdown({
     end,
 })
 
--- Toggle KillAura
 CombatTab:CreateToggle({
     Name = "Enable KillAura",
-    CurrentValue = false,
+    CurrentValue = Settings.KillAuraEnabled,
     Flag = "KillAuraEnabled",
     Callback = function(Value)
         Settings.KillAuraEnabled = Value
@@ -46,7 +47,6 @@ CombatTab:CreateToggle({
     end,
 })
 
--- Range Slider
 CombatTab:CreateSlider({
     Name = "KillAura Range",
     Range = {1, 25},
@@ -56,30 +56,98 @@ CombatTab:CreateSlider({
     Flag = "KillAuraRange",
     Callback = function(Value)
         Settings.KillAuraRange = Value
+        print("[KillAura] Range set to:", Value)
     end,
 })
 
--- Remote (assuming same name as before)
-local MeleeRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("MeleeDamage")
+CombatTab:CreateSlider({
+    Name = "Attack Cooldown",
+    Range = {0.1, 1},
+    Increment = 0.05,
+    Suffix = " seconds",
+    CurrentValue = Settings.AttackCooldown,
+    Flag = "AttackCooldown",
+    Callback = function(Value)
+        Settings.AttackCooldown = Value
+        print("[KillAura] Attack cooldown set to:", Value)
+    end,
+})
 
--- KillAura main loop
+-- Fetch Remotes (waitForChild to ensure they're loaded)
+local MeleeStorage = ReplicatedStorage:WaitForChild("MeleeStorage")
+local Events = MeleeStorage:WaitForChild("Events")
+local HitRemote = Events:WaitForChild("Hit")
+local SwingFunction = Events:WaitForChild("Swing") -- RemoteFunction
+
+-- Attack state
+local attacking = false
+
+local function attackTarget(character, targetLimbName)
+    if attacking then return false end
+    local limb = character:FindFirstChild(targetLimbName)
+    if not limb then return false end
+
+    attacking = true
+
+    local success, err = pcall(function()
+        SwingFunction:InvokeServer()
+    end)
+    if not success then
+        warn("[KillAura] Swing invoke failed:", err)
+        attacking = false
+        return false
+    end
+
+    task.wait(0.05) -- slight delay for swing animation
+
+    success, err = pcall(function()
+        HitRemote:FireServer(limb, limb.Position)
+    end)
+    if not success then
+        warn("[KillAura] Hit remote failed:", err)
+        attacking = false
+        return false
+    end
+
+    task.spawn(function()
+        task.wait(Settings.AttackCooldown)
+        attacking = false
+    end)
+
+    print("[KillAura] Attacked " .. character.Name .. " at " .. targetLimbName)
+    return true
+end
+
+-- Helper to get character's HumanoidRootPart position safely
+local function getCharacterHRPPosition(character)
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        return hrp.Position
+    else
+        return nil
+    end
+end
+
+-- Main loop
 RunService.RenderStepped:Connect(function()
     if not Settings.KillAuraEnabled then return end
+    local myChar = LocalPlayer.Character
+    if not myChar then return end
 
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local root = char.HumanoidRootPart
+    local myPos = getCharacterHRPPosition(myChar)
+    if not myPos then return end
 
-    for _, targetPlayer in ipairs(Players:GetPlayers()) do
-        if targetPlayer ~= LocalPlayer then
-            local targetChar = targetPlayer.Character
-            if targetChar and targetChar:FindFirstChild("Humanoid") and targetChar:FindFirstChild(Settings.KillAuraTargetPart) then
-                local humanoid = targetChar.Humanoid
-                if humanoid.Health > 0 then
-                    local targetPart = targetChar[Settings.KillAuraTargetPart]
-                    local distance = (root.Position - targetPart.Position).Magnitude
-                    if distance <= Settings.KillAuraRange then
-                        MeleeRemote:FireServer(humanoid, false)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local targetChar = player.Character
+            local humanoid = targetChar:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                local targetPart = targetChar:FindFirstChild(Settings.KillAuraTargetPart)
+                if targetPart then
+                    local dist = (myPos - targetPart.Position).Magnitude
+                    if dist <= Settings.KillAuraRange then
+                        attackTarget(targetChar, Settings.KillAuraTargetPart)
+                        break -- attack only one target per frame
                     end
                 end
             end
