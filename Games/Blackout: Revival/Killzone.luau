@@ -27,7 +27,7 @@ local config = {
 --// UI
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
-    Name = "Lime.Cheat 2.0 | Blackout: Revival Script",
+    Name = "Lime.Cheat 2.0 | Blackout: Revival Script (Killzone/Zombies)",
     LoadingTitle = "Loading...",
     ConfigurationSaving = { Enabled = false },
     KeySystem = false
@@ -95,10 +95,11 @@ local function scanFolder(folder, func)
     end
 end
 
---// Scan all relevant NPC folders
+--// NPC targets
 local function scanAllNPCs(callback)
     local folders = {
         workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile"),
+        workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Custom"),
         workspace:FindFirstChild("Arena"),
         workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location"),
         workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Folder"),
