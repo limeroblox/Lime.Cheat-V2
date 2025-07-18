@@ -65,48 +65,32 @@ Tab:CreateSlider({
     end,
 })
 
-local function fireHit(char, isNPC)
+local function fireHit(char)
     if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
 
     local part = nil
-    local hitHead = false
+    local head = char:FindFirstChild("Head")
 
-    for _ = 1, 3 do
-        if math.random(0, 100) <= config.HeadChance then
-            hitHead = true
-            break
-        end
-    end
-
-    if hitHead then
-        local head = char:FindFirstChild("Head")
-        if head and head:IsA("BasePart") then
-            part = head
-        end
-    end
-
-    if not part then
-        local limbs = {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
-        for _ = 1, #limbs do
-            local limbName = limbs[math.random(1, #limbs)]
-            local limb = char:FindFirstChild(limbName)
+    if head and head:IsA("BasePart") and math.random(0, 100) <= config.HeadChance then
+        part = head
+    else
+        local validLimbs = {}
+        for _, name in ipairs({"Torso", "UpperTorso", "LowerTorso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
+            local limb = char:FindFirstChild(name)
             if limb and limb:IsA("BasePart") then
-                part = limb
-                break
+                table.insert(validLimbs, limb)
             end
+        end
+
+        if #validLimbs > 0 then
+            part = validLimbs[math.random(1, #validLimbs)]
         end
     end
 
     if part then
         pcall(function()
             SwingRemote:InvokeServer()
-            if isNPC then
-                -- Separate NPC FireServer logic (if needed)
-                HitRemote:FireServer(part, part.Position)
-            else
-                -- Player FireServer logic
-                HitRemote:FireServer(part, part.Position)
-            end
+            HitRemote:FireServer(part, part.Position)
         end)
     end
 end
@@ -126,7 +110,7 @@ RunService.RenderStepped:Connect(function()
             if plr ~= LocalPlayer and plr.Character then
                 local root = plr.Character:FindFirstChild("HumanoidRootPart")
                 if root and (myRoot.Position - root.Position).Magnitude <= config.Range then
-                    fireHit(plr.Character, false)
+                    fireHit(plr.Character)
                 end
             end
         end
@@ -136,10 +120,10 @@ RunService.RenderStepped:Connect(function()
         local hostileFolder = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
         if hostileFolder then
             for _, npc in ipairs(hostileFolder:GetChildren()) do
-                if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-                    if npc.Humanoid.Health > 0 and (myRoot.Position - npc.HumanoidRootPart.Position).Magnitude <= config.Range then
-                        fireHit(npc, true)
-                    end
+                local root = npc:FindFirstChild("HumanoidRootPart")
+                local hum = npc:FindFirstChild("Humanoid")
+                if root and hum and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
+                    fireHit(npc)
                 end
             end
         end
