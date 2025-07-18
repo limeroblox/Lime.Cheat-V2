@@ -87,12 +87,19 @@ local function fireHit(char)
         end
     end
 
-    if part then
-        pcall(function()
-            SwingRemote:InvokeServer()
+    if not part then return end
+
+    local isArena = char:IsDescendantOf(workspace:FindFirstChild("Arena"))
+    local isTask = char:IsDescendantOf(workspace:FindFirstChild("ActiveTasks"))
+
+    pcall(function()
+        SwingRemote:InvokeServer()
+        if isArena or isTask then
+            HitRemote:FireServer(part, part.Position) -- Custom targeting logic can go here if needed
+        else
             HitRemote:FireServer(part, part.Position)
-        end)
-    end
+        end
+    end)
 end
 
 --// Recursively find all valid NPCs from multiple folders
