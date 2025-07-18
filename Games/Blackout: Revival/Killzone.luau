@@ -1,114 +1,143 @@
--- Fixed Admin Script with Proper Target Part Selection
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Load Rayfield UI Library with error handling
-local Rayfield
-local success, err = pcall(function()
-    Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
-end)
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
-if not success then
-    warn("Failed to load Rayfield UI library:", err)
-    return
-end
-
--- Create Window
 local Window = Rayfield:CreateWindow({
-    Name = "Lime.Cheat | Blackout Revival: Killzone | Mobile Edition",
-    LoadingTitle = "Lime.Cheat",
-    LoadingSubtitle = "by Snowy",
-    ConfigurationSaving = {
-        Enabled = false,
-    },
-    Discord = {
-        Enabled = false,
-    },
-    KeySystem = false,
+	Name = "Lime.Cheat | Blackout Revival: Killzone | Mobile Edition",
+	LoadingTitle = "Lime.Cheat",
+	LoadingSubtitle = "by snowy :p",
+	ConfigurationSaving = {
+		Enabled = false,
+	},
+	Discord = {
+		Enabled = false,
+	},
+	KeySystem = false,
 })
 
 local CombatTab = Window:CreateTab("Combat", 4483362458)
 
--- FIXED: Use a proper settings table that gets updated
+-- Settings
 local Settings = {
-    KillAura = false,
-    KillAuraRange = 15,
-    TargetBodyPart = "Head", -- This will be properly updated now
-    KillAuraTargetType = "Players",
-    AttackInterval = 0.1,
-    MaxTargets = 3
+	KillAura = false,
+	KillAuraRange = 15,
+	KillAuraTargetPart = "Head",
+	KillAuraTargetType = "Players",
+	AttackInterval = 0.1,
+	MaxTargets = 3
 }
 
--- UI Components
+-- KillAura logic
+local function getTargetPart(character)
+	local part = character:FindFirstChild(Settings.KillAuraTargetPart)
+	if part and part:IsA("BasePart") then
+		return part
+	end
+	return character:FindFirstChild("Head") or character:FindFirstChild("Torso") or character:FindFirstChild("HumanoidRootPart")
+end
+
+local function getTargets()
+	local targets = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
+			local humanoid = player.Character:FindFirstChild("Humanoid")
+			if humanoid and humanoid.Health > 0 then
+				local targetPart = getTargetPart(player.Character)
+				if targetPart then
+					local distance = (LocalPlayer.Character.HumanoidRootPart.Position - targetPart.Position).Magnitude
+					if distance <= Settings.KillAuraRange then
+						table.insert(targets, {Player = player, Distance = distance})
+					end
+				end
+			end
+		end
+	end
+	table.sort(targets, function(a, b) return a.Distance < b.Distance end)
+	return targets
+end
+
+-- Attack function
+local function attackTarget(player)
+	local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+	if humanoid then
+		local remote = ReplicatedStorage:FindFirstChild("MeleeDamage")
+		if remote and remote:IsA("RemoteEvent") then
+			remote:FireServer(humanoid, false)
+		end
+	end
+end
+
+-- KillAura loop
+task.spawn(function()
+	local lastAttack = 0
+	RunService.Heartbeat:Connect(function(dt)
+		if Settings.KillAura and tick() - lastAttack >= Settings.AttackInterval then
+			local targets = getTargets()
+			for i = 1, math.min(Settings.MaxTargets, #targets) do
+				attackTarget(targets[i].Player)
+			end
+			lastAttack = tick()
+		end
+	end)
+end)
+
+-- UI Toggles
 CombatTab:CreateToggle({
-    Name = "KillAura",
-    CurrentValue = Settings.KillAura,
-    Flag = "KillAura",
-    Callback = function(Value)
-        Settings.KillAura = Value
-        print("[KillAura] Toggled:", Value and "ON" or "OFF")
-    end,
+	Name = "KillAura",
+	CurrentValue = Settings.KillAura,
+	Flag = "KillAuraEnabled",
+	Callback = function(Value)
+		Settings.KillAura = Value
+	end,
 })
 
 CombatTab:CreateSlider({
-    Name = "Aura Range",
-    Range = {1, 50},
-    Increment = 1,
-    Suffix = "studs",
-    CurrentValue = Settings.KillAuraRange,
-    Flag = "KillAuraRange",
-    Callback = function(Value)
-        Settings.KillAuraRange = Value
-        print("[KillAura] Range set to:", Value)
-    end,
-})
-
-CombatTab:CreateSlider({
-    Name = "Attack Speed",
-    Range = {0.05, 1},
-    Increment = 0.05,
-    Suffix = "s",
-    CurrentValue = Settings.AttackInterval,
-    Flag = "AttackInterval",
-    Callback = function(Value)
-        Settings.AttackInterval = Value
-        print("[KillAura] Attack interval set to:", Value)
-    end,
-})
-
--- FIXED: Now properly updates Settings.TargetBodyPart
-CombatTab:CreateDropdown({
-    Name = "Target Body Part",
-    Options = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"},
-    CurrentOption = Settings.TargetBodyPart,
-    Flag = "KillAuraTargetPart",
-    Callback = function(Option)
-        Settings.TargetBodyPart = Option -- FIXED: Update the settings table
-        print("[KillAura] Target body part set to:", Option)
-    end,
+	Name = "Range",
+	Range = {1, 100},
+	Increment = 1,
+	Suffix = "studs",
+	CurrentValue = Settings.KillAuraRange,
+	Flag = "KillAuraRange",
+	Callback = function(Value)
+		Settings.KillAuraRange = Value
+	end,
 })
 
 CombatTab:CreateDropdown({
-    Name = "KillAura Target",
-    Options = {"Players", "NPCs (Hostile)", "Both"},
-    CurrentOption = Settings.KillAuraTargetType,
-    Flag = "KillAuraTargetType",
-    Callback = function(Option)
-        Settings.KillAuraTargetType = Option
-        print("[KillAura] Target type set to:", Option)
-    end,
+	Name = "Target Body Part",
+	Options = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"},
+	CurrentOption = Settings.KillAuraTargetPart,
+	Flag = "KillAuraTargetPart",
+	Callback = function(Option)
+		Settings.KillAuraTargetPart = Option
+		print("[KillAura] Target body part set to:", Option)
+	end,
 })
 
 CombatTab:CreateSlider({
-    Name = "Max Targets",
-    Range = {1, 10},
-    Increment = 1,
-    CurrentValue = Settings.MaxTargets,
-    Callback = function(val)
-        Settings.MaxTargets = val
-    end,
+	Name = "Attack Interval",
+	Range = {0.05, 1},
+	Increment = 0.05,
+	Suffix = "seconds",
+	CurrentValue = Settings.AttackInterval,
+	Flag = "AttackInterval",
+	Callback = function(Value)
+		Settings.AttackInterval = Value
+	end,
+})
+
+CombatTab:CreateSlider({
+	Name = "Max Targets",
+	Range = {1, 10},
+	Increment = 1,
+	CurrentValue = Settings.MaxTargets,
+	Flag = "MaxTargets",
+	Callback = function(Value)
+		Settings.MaxTargets = Value
+	end,
 })
 
 -- Wait for remotes with timeout
