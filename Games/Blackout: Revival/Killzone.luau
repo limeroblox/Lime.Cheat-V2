@@ -17,11 +17,8 @@ local GunHit = GunEvents:WaitForChild("Hit")
 --// Config
 local config = {
     Enabled = false,
-    HostileNPCEnabled = false,
-    ArenaNPCEnabled = false,
-    ActiveTasksNPCEnabled = false,
-    WaveSurvivalNPCEnabled = false,
-    GunAuraEnabled = false,
+    NPC_KillAura = false,
+    NPC_GunAura = false,
     Range = 15,
     HeadChance = 20,
     Delay = 0.1
@@ -36,18 +33,11 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false
 })
 local Tab = Window:CreateTab("Combat", 4483362458)
---// UI Toggles
-Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
-Tab:CreateToggle({ Name = "Enable KillAura (Hostile NPCs)", CurrentValue = false, Callback = function(v) config.HostileNPCEnabled = v end })
-Tab:CreateToggle({ Name = "Enable KillAura (Arena NPCs)", CurrentValue = false, Callback = function(v) config.ArenaNPCEnabled = v end })
-Tab:CreateToggle({ Name = "Enable KillAura (ActiveTasks NPCs)", CurrentValue = false, Callback = function(v) config.ActiveTasksNPCEnabled = v end })
-Tab:CreateToggle({ Name = "Enable KillAura (WaveSurvival NPCs)", CurrentValue = false, Callback = function(v) config.WaveSurvivalNPCEnabled = v end })
-Tab:CreateToggle({ Name = "GunAura (Hostile NPCs)", CurrentValue = false, Callback = function(v) config.GunAura_Hostile = v end })
-Tab:CreateToggle({ Name = "GunAura (Arena NPCs)", CurrentValue = false, Callback = function(v) config.GunAura_Arena = v end })
-Tab:CreateToggle({ Name = "GunAura (ActiveTasks NPCs)", CurrentValue = false, Callback = function(v) config.GunAura_ActiveTasks = v end })
-Tab:CreateToggle({ Name = "GunAura (WaveSurvival NPCs)", CurrentValue = false, Callback = function(v) config.GunAura_WaveSurvival = v end })
 
---// UI Sliders
+Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
+Tab:CreateToggle({ Name = "KillAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_KillAura = v end })
+Tab:CreateToggle({ Name = "GunAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_GunAura = v end })
+
 Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix = " studs", CurrentValue = 15, Callback = function(v) config.Range = v end })
 Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
@@ -92,15 +82,28 @@ local function fireGun(char)
     end)
 end
 
---// Helper to scan and attack NPCs
-local function scanFolder(folder, attackFunc)
+--// Scan folders
+local function scanFolder(folder, func)
     for _, npc in ipairs(folder:GetChildren()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
             local root = npc.HumanoidRootPart
             if npc.Humanoid.Health > 0 and (LocalPlayer.Character.HumanoidRootPart.Position - root.Position).Magnitude <= config.Range then
-                attackFunc(npc)
+                func(npc)
             end
         end
+    end
+end
+
+--// NPC targets
+local function scanAllNPCs(callback)
+    local folders = {
+        workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile"),
+        workspace:FindFirstChild("Arena"),
+        workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location"),
+        workspace:FindFirstChild("WaveSurvival") and workspace.WaveSurvival:FindFirstChild("NPCs")
+    }
+    for _, folder in ipairs(folders) do
+        if folder then scanFolder(folder, callback) end
     end
 end
 
@@ -114,7 +117,6 @@ RunService.RenderStepped:Connect(function()
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
-    -- Player melee
     if config.Enabled then
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character then
@@ -126,39 +128,11 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Melee NPCs
-    if config.HostileNPCEnabled then
-        local hostile = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
-        if hostile then scanFolder(hostile, fireHit) end
-    end
-    if config.ArenaNPCEnabled then
-        local arena = workspace:FindFirstChild("Arena")
-        if arena then scanFolder(arena, fireHit) end
-    end
-    if config.ActiveTasksNPCEnabled then
-        local loc = workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location")
-        if loc then scanFolder(loc, fireHit) end
-    end
-    if config.WaveSurvivalNPCEnabled then
-        local wave = workspace:FindFirstChild("WaveSurvival") and workspace.WaveSurvival:FindFirstChild("NPCs")
-        if wave then scanFolder(wave, fireHit) end
+    if config.NPC_KillAura then
+        scanAllNPCs(fireHit)
     end
 
-    -- GunAura NPCs
-    if config.GunAura_Hostile then
-        local hostile = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
-        if hostile then scanFolder(hostile, fireGun) end
-    end
-    if config.GunAura_Arena then
-        local arena = workspace:FindFirstChild("Arena")
-        if arena then scanFolder(arena, fireGun) end
-    end
-    if config.GunAura_ActiveTasks then
-        local loc = workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location")
-        if loc then scanFolder(loc, fireGun) end
-    end
-    if config.GunAura_WaveSurvival then
-        local wave = workspace:FindFirstChild("WaveSurvival") and workspace.WaveSurvival:FindFirstChild("NPCs")
-        if wave then scanFolder(wave, fireGun) end
+    if config.NPC_GunAura then
+        scanAllNPCs(fireGun)
     end
 end)
