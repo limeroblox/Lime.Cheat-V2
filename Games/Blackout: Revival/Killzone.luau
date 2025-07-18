@@ -81,7 +81,7 @@ CombatTab:CreateSlider({
 -- FIXED: Now properly updates Settings.TargetBodyPart
 CombatTab:CreateDropdown({
     Name = "Target Body Part",
-    Options = {"Head", "Torso", "UpperTorso", "LowerTorso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"},
+    Options = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"},
     CurrentOption = Settings.TargetBodyPart,
     Flag = "KillAuraTargetPart",
     Callback = function(Option)
@@ -98,6 +98,16 @@ CombatTab:CreateDropdown({
     Callback = function(Option)
         Settings.KillAuraTargetType = Option
         print("[KillAura] Target type set to:", Option)
+    end,
+})
+
+CombatTab:CreateSlider({
+    Name = "Max Targets",
+    Range = {1, 10},
+    Increment = 1,
+    CurrentValue = Settings.MaxTargets,
+    Callback = function(val)
+        Settings.MaxTargets = val
     end,
 })
 
