@@ -1,156 +1,138 @@
 local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
 
--- Load Rayfield UI Library
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
-    Name = "Lime.Cheat | KillAura",
-    LoadingTitle = "Lime.Cheat",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "Lime.Cheat",
-        FileName = "KillAura"
-    }
+	Name = "Lime.Cheat | Blackout Revival: Killzone | Mobile Edition",
+	LoadingTitle = "Lime.Cheat",
+	LoadingSubtitle = "by Snowy",
+	ConfigurationSaving = {
+		Enabled = false,
+	},
+	Discord = {
+		Enabled = false,
+	},
+	KeySystem = false,
 })
 
-local CombatTab = Window:CreateTab("Combat", 123456)
+local CombatTab = Window:CreateTab("Combat", 4483362458)
 
--- Settings with defaults
-local Settings = {
-    KillAuraEnabled = false,
-    KillAuraRange = 10,
-    KillAuraTargetPart = "Head",
-    AttackCooldown = 0.3,
-}
+-- Settings
+getgenv().KillAura = false
+getgenv().KillAuraRange = 15
+getgenv().KillAuraTargetPart = "Head"
+getgenv().KillAuraTargetType = "Players"
 
--- UI Elements
-CombatTab:CreateDropdown({
-    Name = "Target Body Part",
-    Options = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"},
-    CurrentOption = Settings.KillAuraTargetPart,
-    Flag = "KillAuraTargetPart",
-    Callback = function(Option)
-        Settings.KillAuraTargetPart = Option
-        print("[KillAura] Target body part set to:", Option)
-    end,
-})
-
+-- UI
 CombatTab:CreateToggle({
-    Name = "Enable KillAura",
-    CurrentValue = Settings.KillAuraEnabled,
-    Flag = "KillAuraEnabled",
-    Callback = function(Value)
-        Settings.KillAuraEnabled = Value
-        print("[KillAura] Enabled:", Value)
-    end,
+	Name = "KillAura",
+	CurrentValue = false,
+	Flag = "KillAura",
+	Callback = function(Value)
+		getgenv().KillAura = Value
+	end,
 })
 
 CombatTab:CreateSlider({
-    Name = "KillAura Range",
-    Range = {1, 25},
-    Increment = 1,
-    Suffix = " studs",
-    CurrentValue = Settings.KillAuraRange,
-    Flag = "KillAuraRange",
-    Callback = function(Value)
-        Settings.KillAuraRange = Value
-        print("[KillAura] Range set to:", Value)
-    end,
+	Name = "Aura Range",
+	Range = {1, 30},
+	Increment = 1,
+	Suffix = "studs",
+	CurrentValue = 15,
+	Flag = "KillAuraRange",
+	Callback = function(Value)
+		getgenv().KillAuraRange = Value
+	end,
 })
 
-CombatTab:CreateSlider({
-    Name = "Attack Cooldown",
-    Range = {0.1, 1},
-    Increment = 0.05,
-    Suffix = " seconds",
-    CurrentValue = Settings.AttackCooldown,
-    Flag = "AttackCooldown",
-    Callback = function(Value)
-        Settings.AttackCooldown = Value
-        print("[KillAura] Attack cooldown set to:", Value)
-    end,
+CombatTab:CreateDropdown({
+	Name = "Target Body Part",
+	Options = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"},
+	CurrentOption = "Head",
+	Flag = "KillAuraTargetPart",
+	Callback = function(Option)
+		getgenv().KillAuraTargetPart = Option
+	end,
 })
 
--- Fetch Remotes (waitForChild to ensure they're loaded)
-local MeleeStorage = ReplicatedStorage:WaitForChild("MeleeStorage")
-local Events = MeleeStorage:WaitForChild("Events")
-local HitRemote = Events:WaitForChild("Hit")
-local SwingFunction = Events:WaitForChild("Swing") -- RemoteFunction
+CombatTab:CreateDropdown({
+	Name = "KillAura Target",
+	Options = {"Players", "NPCs (Hostile)", "Both"},
+	CurrentOption = "Players",
+	Flag = "KillAuraTargetType",
+	Callback = function(Option)
+		getgenv().KillAuraTargetType = Option
+	end,
+})
 
--- Attack state
-local attacking = false
+-- Remotes
+local HitRemote = ReplicatedStorage:WaitForChild("MeleeStorage"):WaitForChild("Events"):WaitForChild("Hit")
+local SwingRemote = ReplicatedStorage:WaitForChild("MeleeStorage"):WaitForChild("Events"):WaitForChild("Swing")
 
-local function attackTarget(character, targetLimbName)
-    if attacking then return false end
-    local limb = character:FindFirstChild(targetLimbName)
-    if not limb then return false end
+-- Helper Functions
+local function getTargetPart(character)
+	local partName = getgenv().KillAuraTargetPart
+	local part = character:FindFirstChild(partName)
 
-    attacking = true
+	-- Fallback to head if selected part is missing
+	if not part or not part:IsA("BasePart") then
+		part = character:FindFirstChild("Head") or character:FindFirstChild("Torso") or character:FindFirstChild("HumanoidRootPart")
+	end
 
-    local success, err = pcall(function()
-        SwingFunction:InvokeServer()
-    end)
-    if not success then
-        warn("[KillAura] Swing invoke failed:", err)
-        attacking = false
-        return false
-    end
-
-    task.wait(0.05) -- slight delay for swing animation
-
-    success, err = pcall(function()
-        HitRemote:FireServer(limb, limb.Position)
-    end)
-    if not success then
-        warn("[KillAura] Hit remote failed:", err)
-        attacking = false
-        return false
-    end
-
-    task.spawn(function()
-        task.wait(Settings.AttackCooldown)
-        attacking = false
-    end)
-
-    print("[KillAura] Attacked " .. character.Name .. " at " .. targetLimbName)
-    return true
+	return part
 end
 
--- Helper to get character's HumanoidRootPart position safely
-local function getCharacterHRPPosition(character)
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        return hrp.Position
-    else
-        return nil
-    end
+local function attackTarget(char)
+	if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
+
+	local part = getTargetPart(char)
+	if not part then return end
+
+	pcall(function()
+		SwingRemote:InvokeServer()
+		HitRemote:FireServer(part, part.Position)
+	end)
 end
 
--- Main loop
+local function isInRange(pos1, pos2)
+	return (pos1 - pos2).Magnitude <= getgenv().KillAuraRange
+end
+
+-- Main KillAura Loop
 RunService.RenderStepped:Connect(function()
-    if not Settings.KillAuraEnabled then return end
-    local myChar = LocalPlayer.Character
-    if not myChar then return end
+	if not getgenv().KillAura then return end
 
-    local myPos = getCharacterHRPPosition(myChar)
-    if not myPos then return end
+	local myChar = LocalPlayer.Character
+	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	if not myRoot then return end
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local targetChar = player.Character
-            local humanoid = targetChar:FindFirstChild("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                local targetPart = targetChar:FindFirstChild(Settings.KillAuraTargetPart)
-                if targetPart then
-                    local dist = (myPos - targetPart.Position).Magnitude
-                    if dist <= Settings.KillAuraRange then
-                        attackTarget(targetChar, Settings.KillAuraTargetPart)
-                        break -- attack only one target per frame
-                    end
-                end
-            end
-        end
-    end
+	local targetType = getgenv().KillAuraTargetType
+
+	-- Players
+	if targetType == "Players" or targetType == "Both" then
+		for _, player in pairs(Players:GetPlayers()) do
+			if player ~= LocalPlayer and player.Character then
+				local root = player.Character:FindFirstChild("HumanoidRootPart")
+				if root and isInRange(myRoot.Position, root.Position) then
+					attackTarget(player.Character)
+				end
+			end
+		end
+	end
+
+	-- NPCs (Hostile)
+	if targetType == "NPCs (Hostile)" or targetType == "Both" then
+		local hostileFolder = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
+		if hostileFolder then
+			for _, npc in pairs(hostileFolder:GetChildren()) do
+				if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+					if npc.Humanoid.Health > 0 and isInRange(myRoot.Position, npc.HumanoidRootPart.Position) then
+						attackTarget(npc)
+					end
+				end
+			end
+		end
+	end
 end)
