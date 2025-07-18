@@ -15,7 +15,8 @@ local config = {
     Enabled = false,
     NPCEnabled = false,
     Range = 15,
-    HeadChance = 20
+    HeadChance = 20,
+    Delay = 0.1
 }
 
 --// UI
@@ -53,6 +54,14 @@ Tab:CreateSlider({
     Suffix = "%",
     CurrentValue = 20,
     Callback = function(v) config.HeadChance = v end,
+})
+Tab:CreateSlider({
+    Name = "KillAura Delay (seconds)",
+    Range = {0.1, 2},
+    Increment = 0.1,
+    Suffix = "s",
+    CurrentValue = 0.1,
+    Callback = function(v) config.Delay = v end,
 })
 
 --// Valid R6 limbs
@@ -116,7 +125,7 @@ end
 --// Main Loop
 local lastHit = 0
 RunService.RenderStepped:Connect(function()
-    if tick() - lastHit < 0.1 then return end
+    if tick() - lastHit < config.Delay then return end
     lastHit = tick()
 
     local myChar = LocalPlayer.Character
