@@ -100,6 +100,7 @@ local function scanAllNPCs(callback)
         workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile"),
         workspace:FindFirstChild("Arena"),
         workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location"),
+        workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Folder"),
         workspace:FindFirstChild("WaveSurvival") and workspace.WaveSurvival:FindFirstChild("NPCs")
     }
     for _, folder in ipairs(folders) do
