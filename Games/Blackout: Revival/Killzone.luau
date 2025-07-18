@@ -16,6 +16,7 @@ local config = {
     HostileNPCEnabled = false,
     ArenaNPCEnabled = false,
     ActiveTasksNPCEnabled = false,
+    WaveSurvivalNPCEnabled = false,
     Range = 15,
     HeadChance = 20,
     Delay = 0.1
@@ -51,6 +52,11 @@ Tab:CreateToggle({
     CurrentValue = false,
     Callback = function(v) config.ActiveTasksNPCEnabled = v end,
 })
+Tab:CreateToggle({
+    Name = "Enable KillAura (WaveSurvival NPCs)",
+    CurrentValue = false,
+    Callback = function(v) config.WaveSurvivalNPCEnabled = v end,
+})
 Tab:CreateSlider({
     Name = "Aura Range",
     Range = {1, 30},
@@ -83,11 +89,9 @@ local r6Limbs = {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 local function fireHit(char)
     if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
 
-    local part = nil
-    local head = char:FindFirstChild("Head")
-
-    if head and math.random(0, 100) <= config.HeadChance then
-        part = head
+    local part
+    if math.random(0, 100) <= config.HeadChance and char:FindFirstChild("Head") then
+        part = char.Head
     else
         local limbs = {}
         for _, name in ipairs(r6Limbs) do
@@ -107,6 +111,18 @@ local function fireHit(char)
     end
 end
 
+--// Helper to scan and attack NPCs
+local function scanFolder(folder)
+    for _, npc in ipairs(folder:GetChildren()) do
+        if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+            local root = npc.HumanoidRootPart
+            if npc.Humanoid.Health > 0 and (LocalPlayer.Character.HumanoidRootPart.Position - root.Position).Magnitude <= config.Range then
+                fireHit(npc)
+            end
+        end
+    end
+end
+
 --// Main Loop
 local lastHit = 0
 RunService.RenderStepped:Connect(function()
@@ -117,7 +133,7 @@ RunService.RenderStepped:Connect(function()
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
-    -- Players
+    -- Player targets
     if config.Enabled then
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character then
@@ -131,44 +147,27 @@ RunService.RenderStepped:Connect(function()
 
     -- Hostile NPCs
     if config.HostileNPCEnabled then
-        local hostileFolder = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
-        if hostileFolder then
-            for _, npc in ipairs(hostileFolder:GetChildren()) do
-                local hum = npc:FindFirstChild("Humanoid")
-                local root = npc:FindFirstChild("HumanoidRootPart")
-                if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
-                    fireHit(npc)
-                end
-            end
-        end
+        local hostile = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
+        if hostile then scanFolder(hostile) end
     end
 
     -- Arena NPCs
     if config.ArenaNPCEnabled then
-        local arenaFolder = workspace:FindFirstChild("Arena")
-        if arenaFolder then
-            for _, npc in ipairs(arenaFolder:GetChildren()) do
-                local hum = npc:FindFirstChild("Humanoid")
-                local root = npc:FindFirstChild("HumanoidRootPart")
-                if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
-                    fireHit(npc)
-                end
-            end
-        end
+        local arena = workspace:FindFirstChild("Arena")
+        if arena then scanFolder(arena) end
     end
 
     -- ActiveTasks NPCs
     if config.ActiveTasksNPCEnabled then
-        local activeFolder = workspace:FindFirstChild("ActiveTasks")
-        local taskFolder = activeFolder and activeFolder:FindFirstChild("Location")
-        if taskFolder then
-            for _, npc in ipairs(taskFolder:GetChildren()) do
-                local hum = npc:FindFirstChild("Humanoid")
-                local root = npc:FindFirstChild("HumanoidRootPart")
-                if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
-                    fireHit(npc)
-                end
-            end
-        end
+        local tasks = workspace:FindFirstChild("ActiveTasks")
+        local loc = tasks and tasks:FindFirstChild("Location")
+        if loc then scanFolder(loc) end
+    end
+
+    -- WaveSurvival NPCs
+    if config.WaveSurvivalNPCEnabled then
+        local wave = workspace:FindFirstChild("WaveSurvival")
+        local waveNPCs = wave and wave:FindFirstChild("NPCs")
+        if waveNPCs then scanFolder(waveNPCs) end
     end
 end)
