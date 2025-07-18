@@ -13,7 +13,8 @@ local SwingRemote = Events:WaitForChild("Swing")
 --// Config
 local config = {
     Enabled = false,
-    NPCEnabled = false,
+    ArenaNPCEnabled = false,
+    ActiveTasksNPCEnabled = false,
     Range = 15,
     HeadChance = 20,
     Delay = 0.1
@@ -35,9 +36,14 @@ Tab:CreateToggle({
     Callback = function(v) config.Enabled = v end,
 })
 Tab:CreateToggle({
-    Name = "Enable KillAura (NPCs)",
+    Name = "Enable KillAura (Scourge NPCs)",
     CurrentValue = false,
-    Callback = function(v) config.NPCEnabled = v end,
+    Callback = function(v) config.ArenaNPCEnabled = v end,
+})
+Tab:CreateToggle({
+    Name = "Enable KillAura (ActiveTasks NPCs)",
+    CurrentValue = false,
+    Callback = function(v) config.ActiveTasksNPCEnabled = v end,
 })
 Tab:CreateSlider({
     Name = "Aura Range",
@@ -87,46 +93,12 @@ local function fireHit(char)
         end
     end
 
-    if not part then return end
-
-    local isArena = char:IsDescendantOf(workspace:FindFirstChild("Arena"))
-    local isTask = char:IsDescendantOf(workspace:FindFirstChild("ActiveTasks"))
-
-    pcall(function()
-        SwingRemote:InvokeServer()
-        if isArena or isTask then
-            HitRemote:FireServer(part, part.Position) -- Custom targeting logic can go here if needed
-        else
+    if part then
+        pcall(function()
+            SwingRemote:InvokeServer()
             HitRemote:FireServer(part, part.Position)
-        end
-    end)
-end
-
---// Recursively find all valid NPCs from multiple folders
-local function getAllNPCs()
-    local sources = {
-        workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile"),
-        workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location"),
-        workspace:FindFirstChild("Arena")
-    }
-
-    local results = {}
-
-    local function scan(folder)
-        for _, obj in ipairs(folder:GetChildren()) do
-            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
-                table.insert(results, obj)
-            elseif obj:IsA("Folder") or obj:IsA("Model") then
-                scan(obj)
-            end
-        end
+        end)
     end
-
-    for _, src in ipairs(sources) do
-        if src then scan(src) end
-    end
-
-    return results
 end
 
 --// Main Loop
@@ -151,13 +123,30 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- NPC targets (recursive)
-    if config.NPCEnabled then
-        for _, npc in ipairs(getAllNPCs()) do
-            local root = npc:FindFirstChild("HumanoidRootPart")
-            local hum = npc:FindFirstChild("Humanoid")
-            if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
-                fireHit(npc)
+    -- Arena NPC targets
+    if config.ArenaNPCEnabled then
+        local arenaFolder = workspace:FindFirstChild("Arena")
+        if arenaFolder then
+            for _, npc in ipairs(arenaFolder:GetChildren()) do
+                local hum = npc:FindFirstChild("Humanoid")
+                local root = npc:FindFirstChild("HumanoidRootPart")
+                if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
+                    fireHit(npc)
+                end
+            end
+        end
+    end
+
+    -- ActiveTasks NPC targets
+    if config.ActiveTasksNPCEnabled then
+        local activeTasksFolder = workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location")
+        if activeTasksFolder then
+            for _, npc in ipairs(activeTasksFolder:GetChildren()) do
+                local hum = npc:FindFirstChild("Humanoid")
+                local root = npc:FindFirstChild("HumanoidRootPart")
+                if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
+                    fireHit(npc)
+                end
             end
         end
     end
