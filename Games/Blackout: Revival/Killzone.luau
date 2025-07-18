@@ -27,7 +27,7 @@ local config = {
 --// UI
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
-    Name = "KillAura (R6)",
+    Name = "Lime.Cheat 2.0 | Blackout: Revival Script",
     LoadingTitle = "Loading...",
     ConfigurationSaving = { Enabled = false },
     KeySystem = false
