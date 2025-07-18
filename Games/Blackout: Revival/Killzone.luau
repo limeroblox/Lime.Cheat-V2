@@ -11,12 +11,13 @@ local SwingRemote = EventsFolder:WaitForChild("Swing")
 local config = {
     Enabled = false,
     Range = 15,
-    HeadChance = 20, -- default 20%
+    HeadChance = 20,
+    TargetType = "Players" -- or "NPCs" or "Both"
 }
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
-    Name = "KillAura (Improved Head Chance)",
+    Name = "KillAura (Improved)",
     LoadingTitle = "Loading...",
     ConfigurationSaving = {
         Enabled = false,
@@ -53,6 +54,15 @@ Tab:CreateSlider({
     CurrentValue = 20,
     Callback = function(val)
         config.HeadChance = val
+    end,
+})
+
+Tab:CreateDropdown({
+    Name = "KillAura Target Type",
+    Options = {"Players", "NPCs", "Both"},
+    CurrentOption = "Players",
+    Callback = function(option)
+        config.TargetType = option
     end,
 })
 
@@ -107,11 +117,26 @@ RunService.RenderStepped:Connect(function()
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character then
-            local enemyRoot = plr.Character:FindFirstChild("HumanoidRootPart")
-            if enemyRoot and (myRoot.Position - enemyRoot.Position).Magnitude <= config.Range then
-                fireHit(plr.Character)
+    if config.TargetType == "Players" or config.TargetType == "Both" then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                if root and (myRoot.Position - root.Position).Magnitude <= config.Range then
+                    fireHit(plr.Character)
+                end
+            end
+        end
+    end
+
+    if config.TargetType == "NPCs" or config.TargetType == "Both" then
+        local hostileFolder = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
+        if hostileFolder then
+            for _, npc in ipairs(hostileFolder:GetChildren()) do
+                if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+                    if npc.Humanoid.Health > 0 and (myRoot.Position - npc.HumanoidRootPart.Position).Magnitude <= config.Range then
+                        fireHit(npc)
+                    end
+                end
             end
         end
     end
