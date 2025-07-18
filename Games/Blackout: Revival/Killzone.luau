@@ -13,6 +13,7 @@ local SwingRemote = Events:WaitForChild("Swing")
 --// Config
 local config = {
     Enabled = false,
+    HostileNPCEnabled = false,
     ArenaNPCEnabled = false,
     ActiveTasksNPCEnabled = false,
     Range = 15,
@@ -36,7 +37,12 @@ Tab:CreateToggle({
     Callback = function(v) config.Enabled = v end,
 })
 Tab:CreateToggle({
-    Name = "Enable KillAura (Scourge NPCs)",
+    Name = "Enable KillAura (Hostile NPCs)",
+    CurrentValue = false,
+    Callback = function(v) config.HostileNPCEnabled = v end,
+})
+Tab:CreateToggle({
+    Name = "Enable KillAura (Arena NPCs)",
     CurrentValue = false,
     Callback = function(v) config.ArenaNPCEnabled = v end,
 })
@@ -111,7 +117,7 @@ RunService.RenderStepped:Connect(function()
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
-    -- Player targets
+    -- Players
     if config.Enabled then
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character then
@@ -123,7 +129,21 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Arena NPC targets
+    -- Hostile NPCs
+    if config.HostileNPCEnabled then
+        local hostileFolder = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
+        if hostileFolder then
+            for _, npc in ipairs(hostileFolder:GetChildren()) do
+                local hum = npc:FindFirstChild("Humanoid")
+                local root = npc:FindFirstChild("HumanoidRootPart")
+                if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
+                    fireHit(npc)
+                end
+            end
+        end
+    end
+
+    -- Arena NPCs
     if config.ArenaNPCEnabled then
         local arenaFolder = workspace:FindFirstChild("Arena")
         if arenaFolder then
@@ -137,20 +157,16 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- ActiveTasks NPC targets
+    -- ActiveTasks NPCs
     if config.ActiveTasksNPCEnabled then
-        local activeTasksFolder = workspace:FindFirstChild("ActiveTasks")
-        if activeTasksFolder then
-            local locationFolder = activeTasksFolder:FindFirstChild("Location")
-            if locationFolder then
-                for _, npc in ipairs(locationFolder:GetDescendants()) do
-                    if npc:IsA("Model") then
-                        local hum = npc:FindFirstChild("Humanoid")
-                        local root = npc:FindFirstChild("HumanoidRootPart")
-                        if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
-                            fireHit(npc)
-                        end
-                    end
+        local activeFolder = workspace:FindFirstChild("ActiveTasks")
+        local taskFolder = activeFolder and activeFolder:FindFirstChild("Location")
+        if taskFolder then
+            for _, npc in ipairs(taskFolder:GetChildren()) do
+                local hum = npc:FindFirstChild("Humanoid")
+                local root = npc:FindFirstChild("HumanoidRootPart")
+                if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
+                    fireHit(npc)
                 end
             end
         end
