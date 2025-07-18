@@ -36,61 +36,21 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false
 })
 local Tab = Window:CreateTab("Combat", 4483362458)
+--// UI Toggles
+Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
+Tab:CreateToggle({ Name = "Enable KillAura (Hostile NPCs)", CurrentValue = false, Callback = function(v) config.HostileNPCEnabled = v end })
+Tab:CreateToggle({ Name = "Enable KillAura (Arena NPCs)", CurrentValue = false, Callback = function(v) config.ArenaNPCEnabled = v end })
+Tab:CreateToggle({ Name = "Enable KillAura (ActiveTasks NPCs)", CurrentValue = false, Callback = function(v) config.ActiveTasksNPCEnabled = v end })
+Tab:CreateToggle({ Name = "Enable KillAura (WaveSurvival NPCs)", CurrentValue = false, Callback = function(v) config.WaveSurvivalNPCEnabled = v end })
+Tab:CreateToggle({ Name = "GunAura (Hostile NPCs)", CurrentValue = false, Callback = function(v) config.GunAura_Hostile = v end })
+Tab:CreateToggle({ Name = "GunAura (Arena NPCs)", CurrentValue = false, Callback = function(v) config.GunAura_Arena = v end })
+Tab:CreateToggle({ Name = "GunAura (ActiveTasks NPCs)", CurrentValue = false, Callback = function(v) config.GunAura_ActiveTasks = v end })
+Tab:CreateToggle({ Name = "GunAura (WaveSurvival NPCs)", CurrentValue = false, Callback = function(v) config.GunAura_WaveSurvival = v end })
 
-Tab:CreateToggle({
-    Name = "Enable KillAura (Players)",
-    CurrentValue = false,
-    Callback = function(v) config.Enabled = v end,
-})
-Tab:CreateToggle({
-    Name = "Enable KillAura (Hostile NPCs)",
-    CurrentValue = false,
-    Callback = function(v) config.HostileNPCEnabled = v end,
-})
-Tab:CreateToggle({
-    Name = "Enable KillAura (Arena NPCs)",
-    CurrentValue = false,
-    Callback = function(v) config.ArenaNPCEnabled = v end,
-})
-Tab:CreateToggle({
-    Name = "Enable KillAura (ActiveTasks NPCs)",
-    CurrentValue = false,
-    Callback = function(v) config.ActiveTasksNPCEnabled = v end,
-})
-Tab:CreateToggle({
-    Name = "Enable KillAura (WaveSurvival NPCs)",
-    CurrentValue = false,
-    Callback = function(v) config.WaveSurvivalNPCEnabled = v end,
-})
-Tab:CreateToggle({
-    Name = "Enable GunAura (Auto Gun Fire)",
-    CurrentValue = false,
-    Callback = function(v) config.GunAuraEnabled = v end,
-})
-Tab:CreateSlider({
-    Name = "Aura Range",
-    Range = {1, 30},
-    Increment = 1,
-    Suffix = " studs",
-    CurrentValue = 15,
-    Callback = function(v) config.Range = v end,
-})
-Tab:CreateSlider({
-    Name = "Head Hit Chance (%)",
-    Range = {0, 100},
-    Increment = 1,
-    Suffix = "%",
-    CurrentValue = 20,
-    Callback = function(v) config.HeadChance = v end,
-})
-Tab:CreateSlider({
-    Name = "KillAura Delay (seconds)",
-    Range = {0.1, 2},
-    Increment = 0.1,
-    Suffix = "s",
-    CurrentValue = 0.1,
-    Callback = function(v) config.Delay = v end,
-})
+--// UI Sliders
+Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix = " studs", CurrentValue = 15, Callback = function(v) config.Range = v end })
+Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
+Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
 --// Valid R6 limbs
 local r6Limbs = {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
@@ -124,13 +84,11 @@ end
 --// Fire Gun Shot
 local function fireGun(char)
     if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
-
     local part = char:FindFirstChild("Head") or char:FindFirstChild("Torso")
     if not part then return end
-
     pcall(function()
         GunShoot:FireServer()
-        GunHit:FireServer(part, math.random(1000, 9999)) -- Random ID to mimic real call
+        GunHit:FireServer(part, math.random(1000, 9999))
     end)
 end
 
@@ -168,7 +126,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- NPC folders
+    -- Melee NPCs
     if config.HostileNPCEnabled then
         local hostile = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
         if hostile then scanFolder(hostile, fireHit) end
@@ -178,19 +136,29 @@ RunService.RenderStepped:Connect(function()
         if arena then scanFolder(arena, fireHit) end
     end
     if config.ActiveTasksNPCEnabled then
-        local tasks = workspace:FindFirstChild("ActiveTasks")
-        local loc = tasks and tasks:FindFirstChild("Location")
+        local loc = workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location")
         if loc then scanFolder(loc, fireHit) end
     end
     if config.WaveSurvivalNPCEnabled then
-        local wave = workspace:FindFirstChild("WaveSurvival")
-        local waveNPCs = wave and wave:FindFirstChild("NPCs")
-        if waveNPCs then scanFolder(waveNPCs, fireHit) end
+        local wave = workspace:FindFirstChild("WaveSurvival") and workspace.WaveSurvival:FindFirstChild("NPCs")
+        if wave then scanFolder(wave, fireHit) end
     end
 
-    -- GunAura
-    if config.GunAuraEnabled then
+    -- GunAura NPCs
+    if config.GunAura_Hostile then
         local hostile = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
         if hostile then scanFolder(hostile, fireGun) end
+    end
+    if config.GunAura_Arena then
+        local arena = workspace:FindFirstChild("Arena")
+        if arena then scanFolder(arena, fireGun) end
+    end
+    if config.GunAura_ActiveTasks then
+        local loc = workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location")
+        if loc then scanFolder(loc, fireGun) end
+    end
+    if config.GunAura_WaveSurvival then
+        local wave = workspace:FindFirstChild("WaveSurvival") and workspace.WaveSurvival:FindFirstChild("NPCs")
+        if wave then scanFolder(wave, fireGun) end
     end
 end)
