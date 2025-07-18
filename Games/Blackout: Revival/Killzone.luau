@@ -62,22 +62,23 @@ CombatTab:CreateSlider({
 -- Remote (assuming same name as before)
 local MeleeRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("MeleeDamage")
 
--- Main KillAura logic
+-- KillAura main loop
 RunService.RenderStepped:Connect(function()
     if not Settings.KillAuraEnabled then return end
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
 
-    local myRoot = LocalPlayer.Character.HumanoidRootPart
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local root = char.HumanoidRootPart
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
-            local humanoid = player.Character.Humanoid
-            if humanoid.Health > 0 then
-                local part = player.Character:FindFirstChild(Settings.KillAuraTargetPart)
-                if part then
-                    local dist = (myRoot.Position - part.Position).Magnitude
-                    if dist <= Settings.KillAuraRange then
-                        -- Attack using the chosen body part
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        if targetPlayer ~= LocalPlayer then
+            local targetChar = targetPlayer.Character
+            if targetChar and targetChar:FindFirstChild("Humanoid") and targetChar:FindFirstChild(Settings.KillAuraTargetPart) then
+                local humanoid = targetChar.Humanoid
+                if humanoid.Health > 0 then
+                    local targetPart = targetChar[Settings.KillAuraTargetPart]
+                    local distance = (root.Position - targetPart.Position).Magnitude
+                    if distance <= Settings.KillAuraRange then
                         MeleeRemote:FireServer(humanoid, false)
                     end
                 end
