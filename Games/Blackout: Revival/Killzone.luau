@@ -139,13 +139,18 @@ RunService.RenderStepped:Connect(function()
 
     -- ActiveTasks NPC targets
     if config.ActiveTasksNPCEnabled then
-        local activeTasksFolder = workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location")
+        local activeTasksFolder = workspace:FindFirstChild("ActiveTasks")
         if activeTasksFolder then
-            for _, npc in ipairs(activeTasksFolder:GetChildren()) do
-                local hum = npc:FindFirstChild("Humanoid")
-                local root = npc:FindFirstChild("HumanoidRootPart")
-                if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
-                    fireHit(npc)
+            local locationFolder = activeTasksFolder:FindFirstChild("Location")
+            if locationFolder then
+                for _, npc in ipairs(locationFolder:GetDescendants()) do
+                    if npc:IsA("Model") then
+                        local hum = npc:FindFirstChild("Humanoid")
+                        local root = npc:FindFirstChild("HumanoidRootPart")
+                        if hum and root and hum.Health > 0 and (myRoot.Position - root.Position).Magnitude <= config.Range then
+                            fireHit(npc)
+                        end
+                    end
                 end
             end
         end
