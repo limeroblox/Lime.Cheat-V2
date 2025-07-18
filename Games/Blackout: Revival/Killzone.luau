@@ -32,6 +32,7 @@ local Window = Rayfield:CreateWindow({
     ConfigurationSaving = { Enabled = false },
     KeySystem = false
 })
+
 local Tab = Window:CreateTab("Combat", 4483362458)
 
 Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
@@ -82,7 +83,7 @@ local function fireGun(char)
     end)
 end
 
---// Scan folders
+--// Scan NPC folder
 local function scanFolder(folder, func)
     for _, npc in ipairs(folder:GetChildren()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
@@ -94,7 +95,7 @@ local function scanFolder(folder, func)
     end
 end
 
---// NPC targets
+--// Scan all relevant NPC folders
 local function scanAllNPCs(callback)
     local folders = {
         workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile"),
@@ -118,6 +119,7 @@ RunService.RenderStepped:Connect(function()
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
+    -- Player KillAura
     if config.Enabled then
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character then
@@ -129,10 +131,12 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
+    -- NPC KillAura
     if config.NPC_KillAura then
         scanAllNPCs(fireHit)
     end
 
+    -- NPC GunAura
     if config.NPC_GunAura then
         scanAllNPCs(fireGun)
     end
