@@ -74,8 +74,10 @@ local function fireHit(char)
     if head and head:IsA("BasePart") and math.random(0, 100) <= config.HeadChance then
         part = head
     else
+        local limbs = {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
         local validLimbs = {}
-        for _, name in ipairs({"Torso", "UpperTorso", "LowerTorso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
+
+        for _, name in ipairs(limbs) do
             local limb = char:FindFirstChild(name)
             if limb and limb:IsA("BasePart") then
                 table.insert(validLimbs, limb)
