@@ -10,9 +10,9 @@ local SwingRemote = EventsFolder:WaitForChild("Swing")
 
 local config = {
     Enabled = false,
+    NPCEnabled = false,
     Range = 15,
-    HeadChance = 20,
-    TargetType = "Players" -- or "NPCs" or "Both"
+    HeadChance = 20
 }
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
@@ -28,10 +28,18 @@ local Window = Rayfield:CreateWindow({
 local Tab = Window:CreateTab("Combat", 4483362458)
 
 Tab:CreateToggle({
-    Name = "Enable KillAura",
+    Name = "Enable KillAura (Players)",
     CurrentValue = false,
     Callback = function(val)
         config.Enabled = val
+    end,
+})
+
+Tab:CreateToggle({
+    Name = "Enable KillAura (NPCs)",
+    CurrentValue = false,
+    Callback = function(val)
+        config.NPCEnabled = val
     end,
 })
 
@@ -57,16 +65,7 @@ Tab:CreateSlider({
     end,
 })
 
-Tab:CreateDropdown({
-    Name = "KillAura Target Type",
-    Options = {"Players", "NPCs", "Both"},
-    CurrentOption = "Players",
-    Callback = function(option)
-        config.TargetType = option
-    end,
-})
-
-local function fireHit(char)
+local function fireHit(char, isNPC)
     if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
 
     local part = nil
@@ -101,7 +100,13 @@ local function fireHit(char)
     if part then
         pcall(function()
             SwingRemote:InvokeServer()
-            HitRemote:FireServer(part, part.Position)
+            if isNPC then
+                -- Separate NPC FireServer logic (if needed)
+                HitRemote:FireServer(part, part.Position)
+            else
+                -- Player FireServer logic
+                HitRemote:FireServer(part, part.Position)
+            end
         end)
     end
 end
@@ -109,7 +114,6 @@ end
 local lastHit = 0
 
 RunService.RenderStepped:Connect(function()
-    if not config.Enabled then return end
     if tick() - lastHit < 0.1 then return end
     lastHit = tick()
 
@@ -117,24 +121,24 @@ RunService.RenderStepped:Connect(function()
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
 
-    if config.TargetType == "Players" or config.TargetType == "Both" then
+    if config.Enabled then
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character then
                 local root = plr.Character:FindFirstChild("HumanoidRootPart")
                 if root and (myRoot.Position - root.Position).Magnitude <= config.Range then
-                    fireHit(plr.Character)
+                    fireHit(plr.Character, false)
                 end
             end
         end
     end
 
-    if config.TargetType == "NPCs" or config.TargetType == "Both" then
+    if config.NPCEnabled then
         local hostileFolder = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile")
         if hostileFolder then
             for _, npc in ipairs(hostileFolder:GetChildren()) do
                 if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
                     if npc.Humanoid.Health > 0 and (myRoot.Position - npc.HumanoidRootPart.Position).Magnitude <= config.Range then
-                        fireHit(npc)
+                        fireHit(npc, true)
                     end
                 end
             end
