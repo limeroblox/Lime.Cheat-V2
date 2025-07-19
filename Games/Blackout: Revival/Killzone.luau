@@ -83,13 +83,19 @@ local function fireGun(char)
     end)
 end
 
---// Scan NPC folder
+--// Recursive scan NPC folder
 local function scanFolder(folder, func)
-    for _, npc in ipairs(folder:GetChildren()) do
-        if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-            local root = npc.HumanoidRootPart
-            if npc.Humanoid.Health > 0 and (LocalPlayer.Character.HumanoidRootPart.Position - root.Position).Magnitude <= config.Range then
-                func(npc)
+    for _, obj in ipairs(folder:GetChildren()) do
+        if obj:IsA("Folder") then
+            scanFolder(obj, func)
+        elseif obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+            local root = obj.HumanoidRootPart
+            local myChar = LocalPlayer.Character
+            if myChar and myChar:FindFirstChild("HumanoidRootPart") and obj.Humanoid.Health > 0 then
+                local dist = (myChar.HumanoidRootPart.Position - root.Position).Magnitude
+                if dist <= config.Range then
+                    func(obj)
+                end
             end
         end
     end
@@ -97,18 +103,26 @@ end
 
 --// NPC targets
 local function scanAllNPCs(callback)
-    local npcs = workspace:FindFirstChild("NPCs")
-    local activeTasks = workspace:FindFirstChild("ActiveTasks")
-    local waveSurvival = workspace:FindFirstChild("WaveSurvival")
+    local folders = {}
 
-    local folders = {
-        npcs and npcs:FindFirstChild("Hostile"),
-        npcs and npcs:FindFirstChild("Custom"),
-        workspace:FindFirstChild("Arena"),
-        activeTasks and activeTasks:FindFirstChild("Location"),
-        activeTasks and activeTasks:FindFirstChild("Folder"),
-        waveSurvival and waveSurvival:FindFirstChild("NPCs")
-    }
+    local npcs = workspace:FindFirstChild("NPCs")
+    if npcs then
+        table.insert(folders, npcs:FindFirstChild("Hostile"))
+        table.insert(folders, npcs:FindFirstChild("Custom"))
+    end
+
+    local activeTasks = workspace:FindFirstChild("ActiveTasks")
+    if activeTasks then
+        table.insert(folders, activeTasks:FindFirstChild("Location"))
+        table.insert(folders, activeTasks:FindFirstChild("Folder"))
+    end
+
+    table.insert(folders, workspace:FindFirstChild("Arena"))
+
+    local waveSurvival = workspace:FindFirstChild("WaveSurvival")
+    if waveSurvival then
+        table.insert(folders, waveSurvival:FindFirstChild("NPCs"))
+    end
 
     for _, folder in ipairs(folders) do
         if folder then
