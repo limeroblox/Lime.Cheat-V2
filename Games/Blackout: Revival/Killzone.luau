@@ -97,16 +97,23 @@ end
 
 --// NPC targets
 local function scanAllNPCs(callback)
+    local npcs = workspace:FindFirstChild("NPCs")
+    local activeTasks = workspace:FindFirstChild("ActiveTasks")
+    local waveSurvival = workspace:FindFirstChild("WaveSurvival")
+
     local folders = {
-        workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Hostile"),
-        workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild("Custom"),
+        npcs and npcs:FindFirstChild("Hostile"),
+        npcs and npcs:FindFirstChild("Custom"),
         workspace:FindFirstChild("Arena"),
-        workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Location"),
-        workspace:FindFirstChild("ActiveTasks") and workspace.ActiveTasks:FindFirstChild("Folder"),
-        workspace:FindFirstChild("WaveSurvival") and workspace.WaveSurvival:FindFirstChild("NPCs")
+        activeTasks and activeTasks:FindFirstChild("Location"),
+        activeTasks and activeTasks:FindFirstChild("Folder"),
+        waveSurvival and waveSurvival:FindFirstChild("NPCs")
     }
+
     for _, folder in ipairs(folders) do
-        if folder then scanFolder(folder, callback) end
+        if folder then
+            scanFolder(folder, callback)
+        end
     end
 end
 
