@@ -17,13 +17,18 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 
 --// Invis Stuff
+-- Variables
 local platform
 local tween
 local seat
 local cloneCharacter
 
+-- Function to set transparency for character parts
 local function setTransparency(char, value)
-    local parts = {"Head","Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
+    if not char then return end
+    
+    local parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
+    
     for _, v in ipairs(char:GetDescendants()) do
         if v:IsA("BasePart") and table.find(parts, v.Name) then
             v.Transparency = value
@@ -33,21 +38,26 @@ local function setTransparency(char, value)
     end
 end
 
-local cloneCharacter
-
+-- Function to create a clone of the character
 local function createClone()
+    -- Remove existing clone first
     if cloneCharacter then
         cloneCharacter:Destroy()
         cloneCharacter = nil
     end
+    
     local char = LocalPlayer.Character
-    if not char or not char.PrimaryPart then return end
-
+    if not char or not char.PrimaryPart then 
+        warn("Character or PrimaryPart not found")
+        return 
+    end
+    
     cloneCharacter = char:Clone()
-    cloneCharacter.Name = "Clone_"..LocalPlayer.Name -- safe here because cloneCharacter exists
+    cloneCharacter.Name = "Clone_" .. LocalPlayer.Name
     cloneCharacter.Parent = workspace
     cloneCharacter:SetPrimaryPartCFrame(char.PrimaryPart.CFrame)
-
+    
+    -- Configure clone parts
     for _, part in pairs(cloneCharacter:GetDescendants()) do
         if part:IsA("BasePart") then
             part.Anchored = true
@@ -58,6 +68,7 @@ local function createClone()
     end
 end
 
+-- Function to remove the clone
 local function removeClone()
     if cloneCharacter then
         cloneCharacter:Destroy()
@@ -65,59 +76,69 @@ local function removeClone()
     end
 end
 
+-- Function to create the invisible platform
 local function createPlatform()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local hrp = char:WaitForChild("HumanoidRootPart")
-
+    
+    -- Clean up existing objects
     if platform then platform:Destroy() end
     if seat then seat:Destroy() end
+    if tween then tween:Cancel() end
+    
     removeClone()
-
     createClone()
-
+    
     -- Create platform part
     platform = Instance.new("Part")
-    platform.Size = Vector3.new(6,1,6)
+    platform.Size = Vector3.new(6, 1, 6)
     platform.Anchored = true
     platform.CanCollide = true
     platform.Transparency = 1
     platform.Position = hrp.Position - Vector3.new(0, 6, 0) -- 6 studs below
     platform.Name = "InvisPlatform"
     platform.Parent = workspace
-
-    -- Highlight
+    
+    -- Add highlight to platform
     local highlight = Instance.new("Highlight")
     highlight.Adornee = platform
-    highlight.FillColor = Color3.fromRGB(0,255,0)
+    highlight.FillColor = Color3.fromRGB(0, 255, 0)
     highlight.FillTransparency = 0.75
     highlight.OutlineTransparency = 1
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Parent = platform
-
+    
     -- Create invisible seat on platform
     seat = Instance.new("Seat")
     seat.Name = "InvisSeat"
     seat.Anchored = true
     seat.CanCollide = false
     seat.Transparency = 1
-    seat.Size = Vector3.new(2,1,2)
+    seat.Size = Vector3.new(2, 1, 2)
     seat.CFrame = platform.CFrame * CFrame.new(0, 1, 0) -- seat on top of platform
     seat.Parent = workspace
-
+    
+    -- Make character semi-transparent
     setTransparency(char, 0.5)
-
-    -- Tween character PrimaryPart to above platform (so they sit correctly)
+    
+    -- Tween character to above platform
     if char.PrimaryPart then
-        if tween then tween:Cancel() end
         local goal = {CFrame = seat.CFrame * CFrame.new(0, 3, 0)} -- slightly above seat
-        tween = TweenService:Create(char.PrimaryPart, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goal)
+        tween = TweenService:Create(
+            char.PrimaryPart, 
+            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+            goal
+        )
+        
         tween:Play()
+        
         tween.Completed:Connect(function()
             -- Force sit on seat after tween
             local humanoid = char:FindFirstChildWhichIsA("Humanoid")
             if humanoid and seat then
                 humanoid.Sit = true
-                -- Weld seat to player so they stay attached
+                
+                -- Create weld constraint to keep player attached to seat
                 local weld = Instance.new("WeldConstraint")
                 weld.Part0 = seat
                 weld.Part1 = char:FindFirstChild("HumanoidRootPart")
@@ -127,8 +148,11 @@ local function createPlatform()
     end
 end
 
+-- Function to remove the platform and reset character
 local function removePlatform()
     local char = LocalPlayer.Character
+    
+    -- Reset character transparency and sitting state
     if char then
         local humanoid = char:FindFirstChildWhichIsA("Humanoid")
         if humanoid then
@@ -136,18 +160,25 @@ local function removePlatform()
         end
         setTransparency(char, 0)
     end
+    
+    -- Cancel any active tweens
     if tween then
         tween:Cancel()
         tween = nil
     end
+    
+    -- Destroy seat and platform
     if seat then
         seat:Destroy()
         seat = nil
     end
+    
     if platform then
         platform:Destroy()
         platform = nil
     end
+    
+    -- Remove clone
     removeClone()
 end
 --//
