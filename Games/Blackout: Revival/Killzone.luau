@@ -45,8 +45,8 @@ local function hidePlayer()
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
-	humanoid.Sit = true -- Sit first
-	task.wait(0.1) -- slight delay to ensure sit is applied
+	humanoid.Sit = true
+	task.wait(0.1)
 
 	noclip(char)
 
@@ -61,7 +61,6 @@ local function hidePlayer()
 	platform.Position = hrp.Position
 	platform.Parent = workspace
 
-	-- Highlight
 	local highlight = Instance.new("Highlight")
 	highlight.Adornee = platform
 	highlight.FillColor = Color3.fromRGB(0, 255, 0)
@@ -70,16 +69,19 @@ local function hidePlayer()
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 	highlight.Parent = platform
 
-	-- Move player down and weld
 	local offset = Vector3.new(0, -6, 0)
-	hrp.CFrame = platform.CFrame + offset
 
+	-- Move player down using MoveTo
+	char:MoveTo(hrp.Position + offset)
+	task.wait(0.1) -- Give time to apply physics move
+
+	-- Weld after move
 	weld = Instance.new("WeldConstraint")
 	weld.Part0 = hrp
 	weld.Part1 = platform
 	weld.Parent = hrp
 
-	-- Keep dummy synced with where the player *was*
+	-- Sync platform above player
 	updateConnection = RunService.RenderStepped:Connect(function()
 		if hrp and platform then
 			local pos = hrp.Position - offset
@@ -101,7 +103,7 @@ local function unhidePlayer()
 
 		local hrp = char:FindFirstChild("HumanoidRootPart")
 		if hrp then
-			hrp.CFrame = hrp.CFrame + Vector3.new(0, 5, 0) -- Move up 5 studs
+			char:MoveTo(hrp.Position + Vector3.new(0, 5, 0)) -- move back up
 		end
 
 		local humanoid = char:FindFirstChildOfClass("Humanoid")
