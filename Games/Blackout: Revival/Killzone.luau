@@ -17,10 +17,10 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 
 --// Invis Stuff
-
 local platform
 local tween
 local seat
+local cloneCharacter
 
 local function setTransparency(char, value)
     local parts = {"Head","Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
@@ -33,12 +33,46 @@ local function setTransparency(char, value)
     end
 end
 
+local function createClone()
+    if cloneCharacter then
+        cloneCharacter:Destroy()
+        cloneCharacter = nil
+    end
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    cloneCharacter = char:Clone()
+    cloneCharacter.Name = "Clone_"..LocalPlayer.Name
+    cloneCharacter.Parent = workspace
+    cloneCharacter:SetPrimaryPartCFrame(char:GetPrimaryPartCFrame())
+
+    -- Anchor all parts of the clone so it stays still
+    for _, part in pairs(cloneCharacter:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = true
+            part.CanCollide = false
+        elseif part:IsA("Script") or part:IsA("LocalScript") then
+            part:Destroy() -- Remove scripts from clone
+        end
+    end
+end
+
+local function removeClone()
+    if cloneCharacter then
+        cloneCharacter:Destroy()
+        cloneCharacter = nil
+    end
+end
+
 local function createPlatform()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local hrp = char:WaitForChild("HumanoidRootPart")
 
     if platform then platform:Destroy() end
     if seat then seat:Destroy() end
+    removeClone()
+
+    createClone()
 
     -- Create platform part
     platform = Instance.new("Part")
@@ -113,6 +147,7 @@ local function removePlatform()
         platform:Destroy()
         platform = nil
     end
+    removeClone()
 end
 --//
 
