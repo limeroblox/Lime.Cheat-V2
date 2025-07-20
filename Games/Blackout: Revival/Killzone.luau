@@ -99,6 +99,11 @@ local function unhidePlayer()
 	if char then
 		enableCollision(char)
 
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.CFrame = hrp.CFrame + Vector3.new(0, 5, 0) -- Move up 5 studs
+		end
+
 		local humanoid = char:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			humanoid.Sit = false
