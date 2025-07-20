@@ -45,16 +45,24 @@ local function createPlatform()
 
 	platform = Instance.new("Part")
 	platform.Size = Vector3.new(6, 1, 6)
-	platform.Anchored = false
+	platform.Anchored = true
 	platform.CanCollide = true
 	platform.Transparency = 1
 	platform.Name = "InvisPlatform"
+	platform.Position = hrp.Position - Vector3.new(0, 3.5, 0)
 	platform.Parent = workspace
-	platform.CFrame = hrp.CFrame * CFrame.new(0, -3.5, 0)
 
-	weld = Instance.new("WeldConstraint", platform)
-	weld.Part0 = platform
-	weld.Part1 = hrp
+	-- Add a green highlight
+	local highlight = Instance.new("Highlight")
+	highlight.Adornee = platform
+	highlight.FillColor = Color3.fromRGB(0, 255, 0)
+	highlight.FillTransparency = 0.75
+	highlight.OutlineTransparency = 1
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = platform
+
+	-- Put player on top
+	char:SetPrimaryPartCFrame(platform.CFrame * CFrame.new(0, 3.5, 0))
 
 	setTransparency(char, 0.5)
 end
