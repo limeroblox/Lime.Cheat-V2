@@ -17,11 +17,9 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 
 --// Invis Stuff
-local platform
-local weld
-local updateConnection
+local platform, weld, updateConnection
 
--- Makes character non-collidable
+-- Noclip character
 local function noclip(char)
 	for _, part in pairs(char:GetDescendants()) do
 		if part:IsA("BasePart") then
@@ -30,15 +28,29 @@ local function noclip(char)
 	end
 end
 
--- Moves character down and welds to dummy platform
+-- Restore collision
+local function enableCollision(char)
+	for _, part in pairs(char:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CanCollide = true
+		end
+	end
+end
+
+-- Make player invisible by moving them down and syncing a dummy
 local function hidePlayer()
 	local char = LocalPlayer.Character
 	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
 	local hrp = char.HumanoidRootPart
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	humanoid.Sit = true -- Sit first
+	task.wait(0.1) -- slight delay to ensure sit is applied
 
 	noclip(char)
 
-	-- Create the visible dummy part
+	-- Create dummy platform
 	if platform then platform:Destroy() end
 	platform = Instance.new("Part")
 	platform.Size = Vector3.new(6, 1, 6)
@@ -58,7 +70,7 @@ local function hidePlayer()
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 	highlight.Parent = platform
 
-	-- Move player below and weld to platform
+	-- Move player down and weld
 	local offset = Vector3.new(0, -6, 0)
 	hrp.CFrame = platform.CFrame + offset
 
@@ -67,16 +79,16 @@ local function hidePlayer()
 	weld.Part1 = platform
 	weld.Parent = hrp
 
-	-- Sync platform to follow original position
+	-- Keep dummy synced with where the player *was*
 	updateConnection = RunService.RenderStepped:Connect(function()
-		if char and char:FindFirstChild("HumanoidRootPart") then
+		if hrp and platform then
 			local pos = hrp.Position - offset
-			platform.Position = Vector3.new(pos.X, math.max(pos.Y, 5), pos.Z) -- prevent falling too far
+			platform.Position = Vector3.new(pos.X, math.max(pos.Y, 5), pos.Z)
 		end
 	end)
 end
 
--- Restores the character to normal
+-- Restore everything
 local function unhidePlayer()
 	if updateConnection then
 		updateConnection:Disconnect()
@@ -85,10 +97,12 @@ local function unhidePlayer()
 
 	local char = LocalPlayer.Character
 	if char then
-		for _, part in pairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = true
-			end
+		enableCollision(char)
+
+		local humanoid = char:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.Sit = false
+			humanoid.Jump = true
 		end
 	end
 
