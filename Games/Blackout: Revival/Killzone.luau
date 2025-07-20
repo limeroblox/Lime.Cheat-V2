@@ -39,20 +39,19 @@ local function createClone()
         cloneCharacter = nil
     end
     local char = LocalPlayer.Character
-    if not char then return end
+    if not char or not char.PrimaryPart then return end
 
     cloneCharacter = char:Clone()
     cloneCharacter.Name = "Clone_"..LocalPlayer.Name
     cloneCharacter.Parent = workspace
-    cloneCharacter:SetPrimaryPartCFrame(char:GetPrimaryPartCFrame())
+    cloneCharacter:SetPrimaryPartCFrame(char.PrimaryPart.CFrame)
 
-    -- Anchor all parts of the clone so it stays still
     for _, part in pairs(cloneCharacter:GetDescendants()) do
         if part:IsA("BasePart") then
             part.Anchored = true
             part.CanCollide = false
         elseif part:IsA("Script") or part:IsA("LocalScript") then
-            part:Destroy() -- Remove scripts from clone
+            part:Destroy()
         end
     end
 end
