@@ -15,13 +15,22 @@ local GunShoot = GunEvents:WaitForChild("Shoot")
 local GunHit = GunEvents:WaitForChild("Hit")
 
 --//Invis Stuff
+--// Invis Stuff
 local followPlatformOn = false
 local platform, weld
 
-local function setTransparency(char, val)
+local function setTransparency(char, value)
+	local parts = {
+		"Head", "Torso",
+		"Left Arm", "Right Arm",
+		"Left Leg", "Right Leg"
+	}
+
 	for _, v in ipairs(char:GetDescendants()) do
-		if v:IsA("BasePart") or v:IsA("Decal") then
-			v.Transparency = val
+		if v:IsA("BasePart") and table.find(parts, v.Name) then
+			v.Transparency = value
+		elseif v:IsA("Decal") and v.Parent and table.find(parts, v.Parent.Name) then
+			v.Transparency = value
 		end
 	end
 end
@@ -29,6 +38,10 @@ end
 local function createPlatform()
 	local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 	local hrp = char:WaitForChild("HumanoidRootPart")
+
+	if platform then
+		platform:Destroy()
+	end
 
 	platform = Instance.new("Part")
 	platform.Size = Vector3.new(6, 1, 6)
@@ -55,10 +68,11 @@ local function removePlatform()
 	if platform then
 		platform:Destroy()
 		platform = nil
+		weld = nil
 	end
 end
 
-LocalPlayer.CharacterAdded:Connect(function(char)
+LocalPlayer.CharacterAdded:Connect(function()
 	if followPlatformOn then
 		task.wait(0.5)
 		createPlatform()
