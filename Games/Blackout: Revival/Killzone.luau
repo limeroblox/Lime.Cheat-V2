@@ -55,11 +55,27 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
--- Mobile movement placeholder (you can extend this with virtual joystick)
 local function getMobileMoveVector()
-	-- Basic no-move for now; can expand with touch controls
-	return Vector3.new(0,0,0)
+    -- If using a virtual thumbstick, you would read its input here.
+    -- For a basic example, just read touches on screen and calculate a direction relative to center.
+
+    if not UserInputService.TouchEnabled then return Vector3.zero end
+
+    local touches = UserInputService:GetTouches()
+    if #touches == 0 then return Vector3.zero end
+
+    local moveVector = Vector3.zero
+    for _, touch in pairs(touches) do
+        local pos = touch.Position
+        -- Convert screen pos to direction - this is very basic
+        local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        local dir2d = (pos - center).Unit
+        moveVector = Vector3.new(dir2d.X, 0, -dir2d.Y)
+        break -- only use first touch for simplicity
+    end
+    return moveVector
 end
+
 
 local function noclip(char)
 	for _, part in pairs(char:GetDescendants()) do
