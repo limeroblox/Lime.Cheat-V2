@@ -16,11 +16,6 @@ local GunEvents = ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Eve
 local GunShoot = GunEvents:WaitForChild("Shoot")
 local GunHit = GunEvents:WaitForChild("Hit")
 
-
---// Invis Stuff
-
---//
-
 --// Config
 local config = {
     Enabled = false,
@@ -42,8 +37,6 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("Combat", 4483362458)
 
-local MiscTab = Window:CreateTab("Misc", 4483362458)
-
 Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
 Tab:CreateToggle({ Name = "KillAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_KillAura = v end })
 Tab:CreateToggle({ Name = "GunAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_GunAura = v end })
@@ -51,18 +44,6 @@ Tab:CreateToggle({ Name = "GunAura (All NPCs)", CurrentValue = false, Callback =
 Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix = " studs", CurrentValue = 15, Callback = function(v) config.Range = v end })
 Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
-
-MiscTab:CreateToggle({
-    Name = "Invisible",
-    CurrentValue = false,
-    Callback = function(state)
-        if state then
-            InvisibilitySystem:activate()
-        else
-            InvisibilitySystem:deactivate()
-        end
-    end
-})
 
 --// Valid R6 limbs
 local r6Limbs = {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
