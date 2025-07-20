@@ -17,56 +17,91 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 
 --// Invis Stuff
-local fakeRoot
-local fakeRootFollowConn
+local platform
+local weld
+local updateConnection
 
-local function createFakeRoot()
-    if fakeRoot then fakeRoot:Destroy() end
-    if fakeRootFollowConn then fakeRootFollowConn:Disconnect() end
-
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    fakeRoot = Instance.new("Part")
-    fakeRoot.Name = "FakeRoot_" .. LocalPlayer.Name
-    fakeRoot.Size = Vector3.new(2, 2, 1)
-    fakeRoot.Anchored = true
-    fakeRoot.CanCollide = false
-    fakeRoot.Transparency = 0.5
-    fakeRoot.Color = Color3.fromRGB(0, 255, 0)
-    fakeRoot.CFrame = hrp.CFrame
-    fakeRoot.Parent = workspace
-
-    local highlight = Instance.new("Highlight")
-    highlight.Adornee = fakeRoot
-    highlight.FillColor = Color3.fromRGB(0, 255, 0)
-    highlight.FillTransparency = 0.25
-    highlight.OutlineTransparency = 1
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Parent = fakeRoot
-
-    -- Make it follow the HRP
-    local RunService = game:GetService("RunService")
-    fakeRootFollowConn = RunService.RenderStepped:Connect(function()
-        if char and char.Parent and hrp and fakeRoot then
-            fakeRoot.CFrame = hrp.CFrame
-        end
-    end)
+-- Makes character non-collidable
+local function noclip(char)
+	for _, part in pairs(char:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CanCollide = false
+		end
+	end
 end
 
+-- Moves character down and welds to dummy platform
+local function hidePlayer()
+	local char = LocalPlayer.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+	local hrp = char.HumanoidRootPart
 
-local function removeFakeRoot()
-    if fakeRootFollowConn then
-        fakeRootFollowConn:Disconnect()
-        fakeRootFollowConn = nil
-    end
-    if fakeRoot then
-        fakeRoot:Destroy()
-        fakeRoot = nil
-    end
+	noclip(char)
+
+	-- Create the visible dummy part
+	if platform then platform:Destroy() end
+	platform = Instance.new("Part")
+	platform.Size = Vector3.new(6, 1, 6)
+	platform.Anchored = true
+	platform.CanCollide = false
+	platform.Transparency = 1
+	platform.Name = "FakePlatform"
+	platform.Position = hrp.Position
+	platform.Parent = workspace
+
+	-- Highlight
+	local highlight = Instance.new("Highlight")
+	highlight.Adornee = platform
+	highlight.FillColor = Color3.fromRGB(0, 255, 0)
+	highlight.FillTransparency = 0.75
+	highlight.OutlineTransparency = 1
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = platform
+
+	-- Move player below and weld to platform
+	local offset = Vector3.new(0, -6, 0)
+	hrp.CFrame = platform.CFrame + offset
+
+	weld = Instance.new("WeldConstraint")
+	weld.Part0 = hrp
+	weld.Part1 = platform
+	weld.Parent = hrp
+
+	-- Sync platform to follow original position
+	updateConnection = RunService.RenderStepped:Connect(function()
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			local pos = hrp.Position - offset
+			platform.Position = Vector3.new(pos.X, math.max(pos.Y, 5), pos.Z) -- prevent falling too far
+		end
+	end)
 end
 
+-- Restores the character to normal
+local function unhidePlayer()
+	if updateConnection then
+		updateConnection:Disconnect()
+		updateConnection = nil
+	end
+
+	local char = LocalPlayer.Character
+	if char then
+		for _, part in pairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = true
+			end
+		end
+	end
+
+	if weld then
+		weld:Destroy()
+		weld = nil
+	end
+
+	if platform then
+		platform:Destroy()
+		platform = nil
+	end
+end
 --//
 
 --// Config
@@ -105,9 +140,9 @@ MiscTab:CreateToggle({
     CurrentValue = false,
     Callback = function(state)
         if state then
-            createFakeRoot()
+            hidePlayer()
         else
-            removeFakeRoot()
+            unhidePlayer()
         end
     end
 })
