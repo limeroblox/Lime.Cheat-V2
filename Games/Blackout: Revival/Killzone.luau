@@ -33,6 +33,8 @@ local function setTransparency(char, value)
     end
 end
 
+local cloneCharacter
+
 local function createClone()
     if cloneCharacter then
         cloneCharacter:Destroy()
@@ -42,7 +44,7 @@ local function createClone()
     if not char or not char.PrimaryPart then return end
 
     cloneCharacter = char:Clone()
-    cloneCharacter.Name = "Clone_"..LocalPlayer.Name
+    cloneCharacter.Name = "Clone_"..LocalPlayer.Name -- safe here because cloneCharacter exists
     cloneCharacter.Parent = workspace
     cloneCharacter:SetPrimaryPartCFrame(char.PrimaryPart.CFrame)
 
