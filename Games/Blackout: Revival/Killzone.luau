@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 --// Remotes
 local MeleeStorage = ReplicatedStorage:WaitForChild("MeleeStorage")
@@ -14,73 +15,71 @@ local GunEvents = ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Eve
 local GunShoot = GunEvents:WaitForChild("Shoot")
 local GunHit = GunEvents:WaitForChild("Hit")
 
+
 --// Invis Stuff
---// Invis Stuff
-local followPlatformOn = false
-local platform, weld, runConn
+local platform
+local tween
 
 local function setTransparency(char, value)
-	local parts = {
-		"Head", "Torso",
-		"Left Arm", "Right Arm",
-		"Left Leg", "Right Leg"
-	}
-	for _, v in ipairs(char:GetDescendants()) do
-		if v:IsA("BasePart") and table.find(parts, v.Name) then
-			v.Transparency = value
-		elseif v:IsA("Decal") and v.Parent and table.find(parts, v.Parent.Name) then
-			v.Transparency = value
-		end
-	end
+    local parts = {"Head","Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") and table.find(parts, v.Name) then
+            v.Transparency = value
+        elseif v:IsA("Decal") and v.Parent and table.find(parts, v.Parent.Name) then
+            v.Transparency = value
+        end
+    end
 end
 
 local function createPlatform()
-	local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-	local hrp = char:WaitForChild("HumanoidRootPart")
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
 
-	if platform then platform:Destroy() end
+    if platform then
+        platform:Destroy()
+    end
 
-	platform = Instance.new("Part")
-	platform.Size = Vector3.new(6, 1, 6)
-	platform.Anchored = true
-	platform.CanCollide = true
-	platform.Transparency = 1
-	platform.Name = "InvisPlatform"
-	platform.Position = hrp.Position - Vector3.new(0, 3.5, 0)
-	platform.Parent = workspace
+    platform = Instance.new("Part")
+    platform.Size = Vector3.new(6,1,6)
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.Transparency = 1
+    platform.Position = hrp.Position - Vector3.new(0, 3.5, 0)
+    platform.Name = "InvisPlatform"
+    platform.Parent = workspace
 
-	-- Highlight
-	local highlight = Instance.new("Highlight")
-	highlight.Adornee = platform
-	highlight.FillColor = Color3.fromRGB(0, 255, 0)
-	highlight.FillTransparency = 0.75
-	highlight.OutlineTransparency = 1
-	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.Parent = platform
+    local highlight = Instance.new("Highlight")
+    highlight.Adornee = platform
+    highlight.FillColor = Color3.fromRGB(0,255,0)
+    highlight.FillTransparency = 0.75
+    highlight.OutlineTransparency = 1
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = platform
 
-	setTransparency(char, 0.5)
+    setTransparency(char, 0.5)
 
-	-- Lerp follow
-	runConn = game:GetService("RunService").RenderStepped:Connect(function(dt)
-		if not hrp or not platform then return end
-		local target = hrp.Position - Vector3.new(0, 3.5, 0)
-		platform.Position = platform.Position:Lerp(target, 0.25)
-	end)
+    if char.PrimaryPart then
+        if tween then tween:Cancel() end
+        local goal = {CFrame = platform.CFrame * CFrame.new(0, 3.5, 0)}
+        tween = TweenService:Create(char.PrimaryPart, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goal)
+        tween:Play()
+    end
 end
 
 local function removePlatform()
-	local char = LocalPlayer.Character
-	if char then setTransparency(char, 0) end
-	if runConn then runConn:Disconnect() runConn = nil end
-	if platform then platform:Destroy() platform = nil end
+    local char = LocalPlayer.Character
+    if char then
+        setTransparency(char, 0)
+    end
+    if tween then
+        tween:Cancel()
+        tween = nil
+    end
+    if platform then
+        platform:Destroy()
+        platform = nil
+    end
 end
-
-LocalPlayer.CharacterAdded:Connect(function()
-	if followPlatformOn then
-		task.wait(0.5)
-		createPlatform()
-	end
-end)
 --//
 
 --// Config
