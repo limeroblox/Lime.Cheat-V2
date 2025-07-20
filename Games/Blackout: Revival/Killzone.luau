@@ -18,12 +18,15 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 --// Invis Stuff
 local fakeRoot
+local fakeRootFollowConn
 
 local function createFakeRoot()
     if fakeRoot then fakeRoot:Destroy() end
+    if fakeRootFollowConn then fakeRootFollowConn:Disconnect() end
 
     local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
 
     fakeRoot = Instance.new("Part")
     fakeRoot.Name = "FakeRoot_" .. LocalPlayer.Name
@@ -32,10 +35,9 @@ local function createFakeRoot()
     fakeRoot.CanCollide = false
     fakeRoot.Transparency = 0.5
     fakeRoot.Color = Color3.fromRGB(0, 255, 0)
-    fakeRoot.CFrame = char.HumanoidRootPart.CFrame
+    fakeRoot.CFrame = hrp.CFrame
     fakeRoot.Parent = workspace
 
-    -- Optional: Add Highlight
     local highlight = Instance.new("Highlight")
     highlight.Adornee = fakeRoot
     highlight.FillColor = Color3.fromRGB(0, 255, 0)
@@ -43,14 +45,28 @@ local function createFakeRoot()
     highlight.OutlineTransparency = 1
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Parent = fakeRoot
+
+    -- Make it follow the HRP
+    local RunService = game:GetService("RunService")
+    fakeRootFollowConn = RunService.RenderStepped:Connect(function()
+        if char and char.Parent and hrp and fakeRoot then
+            fakeRoot.CFrame = hrp.CFrame
+        end
+    end)
 end
 
+
 local function removeFakeRoot()
+    if fakeRootFollowConn then
+        fakeRootFollowConn:Disconnect()
+        fakeRootFollowConn = nil
+    end
     if fakeRoot then
         fakeRoot:Destroy()
         fakeRoot = nil
     end
 end
+
 --//
 
 --// Config
