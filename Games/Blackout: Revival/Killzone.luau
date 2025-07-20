@@ -17,8 +17,10 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 
 --// Invis Stuff
+
 local platform
 local tween
+local seat
 
 local function setTransparency(char, value)
     local parts = {"Head","Torso","Left Arm","Right Arm","Left Leg","Right Leg"}
@@ -35,19 +37,20 @@ local function createPlatform()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local hrp = char:WaitForChild("HumanoidRootPart")
 
-    if platform then
-        platform:Destroy()
-    end
+    if platform then platform:Destroy() end
+    if seat then seat:Destroy() end
 
+    -- Create platform part
     platform = Instance.new("Part")
     platform.Size = Vector3.new(6,1,6)
     platform.Anchored = true
     platform.CanCollide = true
     platform.Transparency = 1
-    platform.Position = hrp.Position - Vector3.new(0, 3.5, 0)
+    platform.Position = hrp.Position - Vector3.new(0, 6, 0) -- 6 studs below
     platform.Name = "InvisPlatform"
     platform.Parent = workspace
 
+    -- Highlight
     local highlight = Instance.new("Highlight")
     highlight.Adornee = platform
     highlight.FillColor = Color3.fromRGB(0,255,0)
@@ -56,24 +59,55 @@ local function createPlatform()
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Parent = platform
 
+    -- Create invisible seat on platform
+    seat = Instance.new("Seat")
+    seat.Name = "InvisSeat"
+    seat.Anchored = true
+    seat.CanCollide = false
+    seat.Transparency = 1
+    seat.Size = Vector3.new(2,1,2)
+    seat.CFrame = platform.CFrame * CFrame.new(0, 1, 0) -- seat on top of platform
+    seat.Parent = workspace
+
     setTransparency(char, 0.5)
 
+    -- Tween character PrimaryPart to above platform (so they sit correctly)
     if char.PrimaryPart then
         if tween then tween:Cancel() end
-        local goal = {CFrame = platform.CFrame * CFrame.new(0, 3.5, 0)}
+        local goal = {CFrame = seat.CFrame * CFrame.new(0, 3, 0)} -- slightly above seat
         tween = TweenService:Create(char.PrimaryPart, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goal)
         tween:Play()
+        tween.Completed:Connect(function()
+            -- Force sit on seat after tween
+            local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+            if humanoid and seat then
+                humanoid.Sit = true
+                -- Weld seat to player so they stay attached
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = seat
+                weld.Part1 = char:FindFirstChild("HumanoidRootPart")
+                weld.Parent = seat
+            end
+        end)
     end
 end
 
 local function removePlatform()
     local char = LocalPlayer.Character
     if char then
+        local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+        if humanoid then
+            humanoid.Sit = false
+        end
         setTransparency(char, 0)
     end
     if tween then
         tween:Cancel()
         tween = nil
+    end
+    if seat then
+        seat:Destroy()
+        seat = nil
     end
     if platform then
         platform:Destroy()
