@@ -14,10 +14,10 @@ local GunEvents = ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Eve
 local GunShoot = GunEvents:WaitForChild("Shoot")
 local GunHit = GunEvents:WaitForChild("Hit")
 
---//Invis Stuff
+--// Invis Stuff
 --// Invis Stuff
 local followPlatformOn = false
-local platform, weld
+local platform, weld, runConn
 
 local function setTransparency(char, value)
 	local parts = {
@@ -25,7 +25,6 @@ local function setTransparency(char, value)
 		"Left Arm", "Right Arm",
 		"Left Leg", "Right Leg"
 	}
-
 	for _, v in ipairs(char:GetDescendants()) do
 		if v:IsA("BasePart") and table.find(parts, v.Name) then
 			v.Transparency = value
@@ -39,9 +38,7 @@ local function createPlatform()
 	local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 	local hrp = char:WaitForChild("HumanoidRootPart")
 
-	if platform then
-		platform:Destroy()
-	end
+	if platform then platform:Destroy() end
 
 	platform = Instance.new("Part")
 	platform.Size = Vector3.new(6, 1, 6)
@@ -52,7 +49,7 @@ local function createPlatform()
 	platform.Position = hrp.Position - Vector3.new(0, 3.5, 0)
 	platform.Parent = workspace
 
-	-- Add a green highlight
+	-- Highlight
 	local highlight = Instance.new("Highlight")
 	highlight.Adornee = platform
 	highlight.FillColor = Color3.fromRGB(0, 255, 0)
@@ -61,23 +58,21 @@ local function createPlatform()
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 	highlight.Parent = platform
 
-	-- Put player on top
-	char:SetPrimaryPartCFrame(platform.CFrame * CFrame.new(0, 3.5, 0))
-
 	setTransparency(char, 0.5)
+
+	-- Lerp follow
+	runConn = game:GetService("RunService").RenderStepped:Connect(function(dt)
+		if not hrp or not platform then return end
+		local target = hrp.Position - Vector3.new(0, 3.5, 0)
+		platform.Position = platform.Position:Lerp(target, 0.25)
+	end)
 end
 
 local function removePlatform()
 	local char = LocalPlayer.Character
-	if char then
-		setTransparency(char, 0)
-	end
-
-	if platform then
-		platform:Destroy()
-		platform = nil
-		weld = nil
-	end
+	if char then setTransparency(char, 0) end
+	if runConn then runConn:Disconnect() runConn = nil end
+	if platform then platform:Destroy() platform = nil end
 end
 
 LocalPlayer.CharacterAdded:Connect(function()
