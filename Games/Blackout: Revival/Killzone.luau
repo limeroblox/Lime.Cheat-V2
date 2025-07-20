@@ -4,6 +4,7 @@ local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 --// Remotes
 local MeleeStorage = ReplicatedStorage:WaitForChild("MeleeStorage")
@@ -18,8 +19,48 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 --// Invis Stuff
 local platform, weld, updateConnection
+local Camera = workspace.CurrentCamera
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = game.Players.LocalPlayer
 
--- Noclip character
+local isHidden = false
+local moveDirection = Vector3.new(0,0,0)
+local offset = Vector3.new(0, -6, 0)
+
+-- Update camera manually to stay above platform
+local function updateCamera()
+	if not platform then return end
+	Camera.CameraType = Enum.CameraType.Scriptable
+	Camera.CFrame = CFrame.new(platform.Position + Vector3.new(0, 10, 10), platform.Position)
+end
+
+-- PC Movement (WASD)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not isHidden then return end
+	if input.KeyCode == Enum.KeyCode.W then moveDirection = Vector3.new(0, 0, -1) end
+	if input.KeyCode == Enum.KeyCode.S then moveDirection = Vector3.new(0, 0, 1) end
+	if input.KeyCode == Enum.KeyCode.A then moveDirection = Vector3.new(-1, 0, 0) end
+	if input.KeyCode == Enum.KeyCode.D then moveDirection = Vector3.new(1, 0, 0) end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if not isHidden then return end
+	-- Stop movement when keys released
+	if input.KeyCode == Enum.KeyCode.W or
+	   input.KeyCode == Enum.KeyCode.S or
+	   input.KeyCode == Enum.KeyCode.A or
+	   input.KeyCode == Enum.KeyCode.D then
+		moveDirection = Vector3.new(0,0,0)
+	end
+end)
+
+-- Mobile movement placeholder (you can extend this with virtual joystick)
+local function getMobileMoveVector()
+	-- Basic no-move for now; can expand with touch controls
+	return Vector3.new(0,0,0)
+end
+
 local function noclip(char)
 	for _, part in pairs(char:GetDescendants()) do
 		if part:IsA("BasePart") then
@@ -28,7 +69,6 @@ local function noclip(char)
 	end
 end
 
--- Restore collision
 local function enableCollision(char)
 	for _, part in pairs(char:GetDescendants()) do
 		if part:IsA("BasePart") then
@@ -37,7 +77,6 @@ local function enableCollision(char)
 	end
 end
 
--- Make player invisible by moving them down and syncing a dummy
 local function hidePlayer()
 	local char = LocalPlayer.Character
 	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
@@ -50,7 +89,6 @@ local function hidePlayer()
 
 	noclip(char)
 
-	-- Create dummy platform
 	if platform then platform:Destroy() end
 	platform = Instance.new("Part")
 	platform.Size = Vector3.new(6, 1, 6)
@@ -69,28 +107,37 @@ local function hidePlayer()
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 	highlight.Parent = platform
 
-	local offset = Vector3.new(0, -6, 0)
-
-	-- Move player down using MoveTo
 	char:MoveTo(hrp.Position + offset)
-	task.wait(0.1) -- Give time to apply physics move
+	task.wait(0.1)
 
-	-- Weld after move
 	weld = Instance.new("WeldConstraint")
 	weld.Part0 = hrp
 	weld.Part1 = platform
 	weld.Parent = hrp
 
-	-- Sync platform above player
-	updateConnection = RunService.RenderStepped:Connect(function()
+	isHidden = true
+	Camera.CameraSubject = nil
+	Camera.CameraType = Enum.CameraType.Scriptable
+	updateCamera()
+
+	updateConnection = RunService.RenderStepped:Connect(function(dt)
 		if hrp and platform then
+			local moveVec = moveDirection
+			if UserInputService.TouchEnabled then
+				moveVec = getMobileMoveVector()
+			end
+			if moveVec.Magnitude > 0 then
+				platform.Position += moveVec.Unit * 0.5 -- movement speed
+			end
+
 			local pos = hrp.Position - offset
 			platform.Position = Vector3.new(pos.X, math.max(pos.Y, 5), pos.Z)
+
+			updateCamera()
 		end
 	end)
 end
 
--- Restore everything
 local function unhidePlayer()
 	if updateConnection then
 		updateConnection:Disconnect()
@@ -122,6 +169,10 @@ local function unhidePlayer()
 		platform:Destroy()
 		platform = nil
 	end
+
+	isHidden = false
+	Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+	Camera.CameraType = Enum.CameraType.Custom
 end
 --//
 
@@ -161,9 +212,11 @@ MiscTab:CreateToggle({
     CurrentValue = false,
     Callback = function(state)
         if state then
-            hidePlayer()
+            local success, err = pcall(hidePlayer)
+            if not success then warn("hidePlayer error:", err) end
         else
-            unhidePlayer()
+            local success, err = pcall(unhidePlayer)
+            if not success then warn("unhidePlayer error:", err) end
         end
     end
 })
