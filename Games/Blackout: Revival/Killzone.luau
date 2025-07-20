@@ -18,178 +18,295 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 
 --// Invis Stuff
-local platform, weld, updateConnection
-local Camera = workspace.CurrentCamera
+-- Improved Invisibility System
+local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local LocalPlayer = game.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
 
-local isHidden = false
-local moveDirection = Vector3.new(0,0,0)
-local offset = Vector3.new(0, -6, 0)
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
--- Update camera manually to stay above platform
-local function updateCamera()
-	if not platform then return end
-	Camera.CameraType = Enum.CameraType.Scriptable
-	Camera.CFrame = CFrame.new(platform.Position + Vector3.new(0, 10, 10), platform.Position)
-end
+-- Configuration
+local CONFIG = {
+    PLATFORM_SIZE = Vector3.new(6, 1, 6),
+    MOVEMENT_SPEED = 16, -- studs per second
+    CAMERA_OFFSET = Vector3.new(0, 10, 10),
+    PLAYER_OFFSET = Vector3.new(0, -6, 0),
+    MIN_HEIGHT = 5,
+    HIGHLIGHT_COLOR = Color3.fromRGB(0, 255, 0),
+    HIGHLIGHT_TRANSPARENCY = 0.75
+}
 
--- PC Movement (WASD)
-UserInputService.InputBegan:Connect(function(input, processed)
-	if processed or not isHidden then return end
-	if input.KeyCode == Enum.KeyCode.W then moveDirection = Vector3.new(0, 0, -1) end
-	if input.KeyCode == Enum.KeyCode.S then moveDirection = Vector3.new(0, 0, 1) end
-	if input.KeyCode == Enum.KeyCode.A then moveDirection = Vector3.new(-1, 0, 0) end
-	if input.KeyCode == Enum.KeyCode.D then moveDirection = Vector3.new(1, 0, 0) end
-end)
+-- State management
+local InvisibilitySystem = {
+    isActive = false,
+    platform = nil,
+    weld = nil,
+    connections = {},
+    moveVector = Vector3.zero,
+    
+    -- Input state
+    inputState = {
+        w = false, s = false,
+        a = false, d = false
+    }
+}
 
-UserInputService.InputEnded:Connect(function(input)
-	if not isHidden then return end
-	-- Stop movement when keys released
-	if input.KeyCode == Enum.KeyCode.W or
-	   input.KeyCode == Enum.KeyCode.S or
-	   input.KeyCode == Enum.KeyCode.A or
-	   input.KeyCode == Enum.KeyCode.D then
-		moveDirection = Vector3.new(0,0,0)
-	end
-end)
-
-local function getMobileMoveVector()
-    -- If using a virtual thumbstick, you would read its input here.
-    -- For a basic example, just read touches on screen and calculate a direction relative to center.
-
-    if not UserInputService.TouchEnabled then return Vector3.zero end
-
-    local touches = UserInputService:GetTouches()
-    if #touches == 0 then return Vector3.zero end
-
-    local moveVector = Vector3.zero
-    for _, touch in pairs(touches) do
-        local pos = touch.Position
-        -- Convert screen pos to direction - this is very basic
-        local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-        local dir2d = (pos - center).Unit
-        moveVector = Vector3.new(dir2d.X, 0, -dir2d.Y)
-        break -- only use first touch for simplicity
+-- Utility Functions
+local function safeDestroy(instance)
+    if instance and instance.Parent then
+        instance:Destroy()
     end
-    return moveVector
 end
 
-
-local function noclip(char)
-	for _, part in pairs(char:GetDescendants()) do
-		if part:IsA("BasePart") then
-			part.CanCollide = false
-		end
-	end
+local function getCharacterParts(character)
+    local parts = {}
+    for _, descendant in pairs(character:GetDescendants()) do
+        if descendant:IsA("BasePart") then
+            table.insert(parts, descendant)
+        end
+    end
+    return parts
 end
 
-local function enableCollision(char)
-	for _, part in pairs(char:GetDescendants()) do
-		if part:IsA("BasePart") then
-			part.CanCollide = true
-		end
-	end
+local function setCollisionForCharacter(character, canCollide)
+    local parts = getCharacterParts(character)
+    for _, part in pairs(parts) do
+        part.CanCollide = canCollide
+    end
 end
 
-local function hidePlayer()
-	local char = LocalPlayer.Character
-	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-	local hrp = char.HumanoidRootPart
-	local humanoid = char:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
-
-	humanoid.Sit = true
-	task.wait(0.1)
-
-	noclip(char)
-
-	if platform then platform:Destroy() end
-	platform = Instance.new("Part")
-	platform.Size = Vector3.new(6, 1, 6)
-	platform.Anchored = true
-	platform.CanCollide = false
-	platform.Transparency = 1
-	platform.Name = "FakePlatform"
-	platform.Position = hrp.Position
-	platform.Parent = workspace
-
-	local highlight = Instance.new("Highlight")
-	highlight.Adornee = platform
-	highlight.FillColor = Color3.fromRGB(0, 255, 0)
-	highlight.FillTransparency = 0.75
-	highlight.OutlineTransparency = 1
-	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.Parent = platform
-
-	char:MoveTo(hrp.Position + offset)
-	task.wait(0.1)
-
-	weld = Instance.new("WeldConstraint")
-	weld.Part0 = hrp
-	weld.Part1 = platform
-	weld.Parent = hrp
-
-	isHidden = true
-	Camera.CameraSubject = nil
-	Camera.CameraType = Enum.CameraType.Scriptable
-	updateCamera()
-
-	updateConnection = RunService.RenderStepped:Connect(function(dt)
-		if hrp and platform then
-			local moveVec = moveDirection
-			if UserInputService.TouchEnabled then
-				moveVec = getMobileMoveVector()
-			end
-			if moveVec.Magnitude > 0 then
-				platform.Position += moveVec.Unit * 0.5 -- movement speed
-			end
-
-			local pos = hrp.Position - offset
-			platform.Position = Vector3.new(pos.X, math.max(pos.Y, 5), pos.Z)
-
-			updateCamera()
-		end
-	end)
+-- Movement System
+local function updateInputVector()
+    local vector = Vector3.zero
+    
+    if InvisibilitySystem.inputState.w then vector = vector + Vector3.new(0, 0, -1) end
+    if InvisibilitySystem.inputState.s then vector = vector + Vector3.new(0, 0, 1) end
+    if InvisibilitySystem.inputState.a then vector = vector + Vector3.new(-1, 0, 0) end
+    if InvisibilitySystem.inputState.d then vector = vector + Vector3.new(1, 0, 0) end
+    
+    InvisibilitySystem.moveVector = vector.Unit
 end
 
-local function unhidePlayer()
-	if updateConnection then
-		updateConnection:Disconnect()
-		updateConnection = nil
-	end
-
-	local char = LocalPlayer.Character
-	if char then
-		enableCollision(char)
-
-		local hrp = char:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			char:MoveTo(hrp.Position + Vector3.new(0, 5, 0)) -- move back up
-		end
-
-		local humanoid = char:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.Sit = false
-			humanoid.Jump = true
-		end
-	end
-
-	if weld then
-		weld:Destroy()
-		weld = nil
-	end
-
-	if platform then
-		platform:Destroy()
-		platform = nil
-	end
-
-	isHidden = false
-	Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-	Camera.CameraType = Enum.CameraType.Custom
+local function getMobileInput()
+    if not UserInputService.TouchEnabled then 
+        return Vector3.zero 
+    end
+    
+    local touches = UserInputService:GetTouches()
+    if #touches == 0 then 
+        return Vector3.zero 
+    end
+    
+    -- Use first touch for movement
+    local touch = touches[1]
+    local screenCenter = Camera.ViewportSize * 0.5
+    local touchPos = touch.Position
+    local direction = (touchPos - screenCenter)
+    
+    -- Normalize and convert to world space
+    if direction.Magnitude > 50 then -- Dead zone
+        direction = direction.Unit
+        return Vector3.new(direction.X, 0, -direction.Y)
+    end
+    
+    return Vector3.zero
 end
+
+-- Camera Management
+local function updateCamera()
+    if not InvisibilitySystem.platform then return end
+    
+    Camera.CameraType = Enum.CameraType.Scriptable
+    local targetPosition = InvisibilitySystem.platform.Position + CONFIG.CAMERA_OFFSET
+    Camera.CFrame = CFrame.lookAt(targetPosition, InvisibilitySystem.platform.Position)
+end
+
+-- Platform Management
+local function createPlatform(position)
+    local platform = Instance.new("Part")
+    platform.Name = "InvisibilityPlatform"
+    platform.Size = CONFIG.PLATFORM_SIZE
+    platform.Anchored = true
+    platform.CanCollide = false
+    platform.Transparency = 1
+    platform.Position = position
+    platform.Parent = workspace
+    
+    -- Add highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Adornee = platform
+    highlight.FillColor = CONFIG.HIGHLIGHT_COLOR
+    highlight.FillTransparency = CONFIG.HIGHLIGHT_TRANSPARENCY
+    highlight.OutlineTransparency = 1
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = platform
+    
+    return platform
+end
+
+local function createWeldConstraint(part0, part1)
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = part0
+    weld.Part1 = part1
+    weld.Parent = part0
+    return weld
+end
+
+-- Main Functions
+function InvisibilitySystem:activate()
+    if self.isActive then return end
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoidRootPart or not humanoid then return end
+    
+    -- Prepare character
+    humanoid.Sit = true
+    task.wait(0.1)
+    
+    setCollisionForCharacter(character, false)
+    
+    -- Create platform
+    self.platform = createPlatform(humanoidRootPart.Position)
+    
+    -- Position character
+    character:MoveTo(humanoidRootPart.Position + CONFIG.PLAYER_OFFSET)
+    task.wait(0.1)
+    
+    -- Create weld
+    self.weld = createWeldConstraint(humanoidRootPart, self.platform)
+    
+    -- Setup camera
+    Camera.CameraSubject = nil
+    updateCamera()
+    
+    -- Start update loop
+    self.connections.update = RunService.Heartbeat:Connect(function(deltaTime)
+        self:update(deltaTime)
+    end)
+    
+    self.isActive = true
+end
+
+function InvisibilitySystem:deactivate()
+    if not self.isActive then return end
+    
+    -- Disconnect all connections
+    for _, connection in pairs(self.connections) do
+        if connection then
+            connection:Disconnect()
+        end
+    end
+    self.connections = {}
+    
+    local character = LocalPlayer.Character
+    if character then
+        setCollisionForCharacter(character, true)
+        
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            character:MoveTo(humanoidRootPart.Position + Vector3.new(0, 5, 0))
+        end
+        
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.Sit = false
+            humanoid.Jump = true
+        end
+    end
+    
+    -- Cleanup objects
+    safeDestroy(self.weld)
+    safeDestroy(self.platform)
+    self.weld = nil
+    self.platform = nil
+    
+    -- Reset camera
+    Camera.CameraSubject = character and character:FindFirstChild("Humanoid")
+    Camera.CameraType = Enum.CameraType.Custom
+    
+    self.isActive = false
+end
+
+function InvisibilitySystem:update(deltaTime)
+    if not self.platform then return end
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    -- Get movement input
+    local moveVector = self.moveVector
+    if UserInputService.TouchEnabled then
+        local mobileInput = getMobileInput()
+        if mobileInput.Magnitude > 0 then
+            moveVector = mobileInput
+        end
+    end
+    
+    -- Apply movement
+    if moveVector.Magnitude > 0 then
+        local movement = moveVector * CONFIG.MOVEMENT_SPEED * deltaTime
+        self.platform.Position = self.platform.Position + movement
+    end
+    
+    -- Maintain minimum height
+    local currentPos = self.platform.Position
+    if currentPos.Y < CONFIG.MIN_HEIGHT then
+        self.platform.Position = Vector3.new(currentPos.X, CONFIG.MIN_HEIGHT, currentPos.Z)
+    end
+    
+    updateCamera()
+end
+
+-- Input Handling
+local function setupInputHandling()
+    InvisibilitySystem.connections.inputBegan = UserInputService.InputBegan:Connect(function(input, processed)
+        if processed or not InvisibilitySystem.isActive then return end
+        
+        local keyCode = input.KeyCode
+        if keyCode == Enum.KeyCode.W then
+            InvisibilitySystem.inputState.w = true
+        elseif keyCode == Enum.KeyCode.S then
+            InvisibilitySystem.inputState.s = true
+        elseif keyCode == Enum.KeyCode.A then
+            InvisibilitySystem.inputState.a = true
+        elseif keyCode == Enum.KeyCode.D then
+            InvisibilitySystem.inputState.d = true
+        end
+        
+        updateInputVector()
+    end)
+    
+    InvisibilitySystem.connections.inputEnded = UserInputService.InputEnded:Connect(function(input)
+        if not InvisibilitySystem.isActive then return end
+        
+        local keyCode = input.KeyCode
+        if keyCode == Enum.KeyCode.W then
+            InvisibilitySystem.inputState.w = false
+        elseif keyCode == Enum.KeyCode.S then
+            InvisibilitySystem.inputState.s = false
+        elseif keyCode == Enum.KeyCode.A then
+            InvisibilitySystem.inputState.a = false
+        elseif keyCode == Enum.KeyCode.D then
+            InvisibilitySystem.inputState.d = false
+        end
+        
+        updateInputVector()
+    end)
+end
+
+-- Initialize
+setupInputHandling()
+-- Export the system
+return InvisibilitySystem
 --//
 
 --// Config
@@ -228,11 +345,9 @@ MiscTab:CreateToggle({
     CurrentValue = false,
     Callback = function(state)
         if state then
-            local success, err = pcall(hidePlayer)
-            if not success then warn("hidePlayer error:", err) end
+            InvisibilitySystem:activate()
         else
-            local success, err = pcall(unhidePlayer)
-            if not success then warn("unhidePlayer error:", err) end
+            InvisibilitySystem:deactivate()
         end
     end
 })
