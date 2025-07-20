@@ -182,7 +182,20 @@ Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix =
 Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
-MiscTab:CreateToggle({ Name = "Invisible", CurrentValue = false, Callback = function(state) followPlatformOn = state if state then createPlatform() else removePlatform() end end })
+local followPlatformOn = True
+
+MiscTab:CreateToggle({
+    Name = "Invisible",
+    CurrentValue = false,
+    Callback = function(state)
+        followPlatformOn = state
+        if state then
+            createPlatform()
+        else
+            removePlatform()
+        end
+    end
+})
 
 --// Valid R6 limbs
 local r6Limbs = {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
