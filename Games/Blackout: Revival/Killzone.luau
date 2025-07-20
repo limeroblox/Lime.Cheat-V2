@@ -19,14 +19,6 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 --// Invis Stuff
 -- Improved Invisibility System
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-
 -- Configuration
 local CONFIG = {
     PLATFORM_SIZE = Vector3.new(6, 1, 6),
