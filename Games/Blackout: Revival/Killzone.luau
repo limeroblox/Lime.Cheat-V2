@@ -17,169 +17,39 @@ local GunHit = GunEvents:WaitForChild("Hit")
 
 
 --// Invis Stuff
--- Variables
-local platform
-local tween
-local seat
-local cloneCharacter
+local fakeRoot
 
--- Function to set transparency for character parts
-local function setTransparency(char, value)
-    if not char then return end
-    
-    local parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
-    
-    for _, v in ipairs(char:GetDescendants()) do
-        if v:IsA("BasePart") and table.find(parts, v.Name) then
-            v.Transparency = value
-        elseif v:IsA("Decal") and v.Parent and table.find(parts, v.Parent.Name) then
-            v.Transparency = value
-        end
-    end
-end
+local function createFakeRoot()
+    if fakeRoot then fakeRoot:Destroy() end
 
--- Function to create a clone of the character
-local function createClone()
-    -- Remove existing clone first
-    if cloneCharacter then
-        cloneCharacter:Destroy()
-        cloneCharacter = nil
-    end
-    
     local char = LocalPlayer.Character
-    if not char or not char.PrimaryPart then 
-        warn("Character or PrimaryPart not found")
-        return 
-    end
-    
-    cloneCharacter = char:Clone()
-    cloneCharacter.Name = "Clone_" .. LocalPlayer.Name
-    cloneCharacter.Parent = workspace
-    cloneCharacter:SetPrimaryPartCFrame(char.PrimaryPart.CFrame)
-    
-    -- Configure clone parts
-    for _, part in pairs(cloneCharacter:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Anchored = true
-            part.CanCollide = false
-        elseif part:IsA("Script") or part:IsA("LocalScript") then
-            part:Destroy()
-        end
-    end
-end
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
 
--- Function to remove the clone
-local function removeClone()
-    if cloneCharacter then
-        cloneCharacter:Destroy()
-        cloneCharacter = nil
-    end
-end
+    fakeRoot = Instance.new("Part")
+    fakeRoot.Name = "FakeRoot_" .. LocalPlayer.Name
+    fakeRoot.Size = Vector3.new(2, 2, 1)
+    fakeRoot.Anchored = true
+    fakeRoot.CanCollide = false
+    fakeRoot.Transparency = 0.5
+    fakeRoot.Color = Color3.fromRGB(0, 255, 0)
+    fakeRoot.CFrame = char.HumanoidRootPart.CFrame
+    fakeRoot.Parent = workspace
 
--- Function to create the invisible platform
-local function createPlatform()
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart")
-    
-    -- Clean up existing objects
-    if platform then platform:Destroy() end
-    if seat then seat:Destroy() end
-    if tween then tween:Cancel() end
-    
-    removeClone()
-    createClone()
-    
-    -- Create platform part
-    platform = Instance.new("Part")
-    platform.Size = Vector3.new(6, 1, 6)
-    platform.Anchored = true
-    platform.CanCollide = true
-    platform.Transparency = 1
-    platform.Position = hrp.Position - Vector3.new(0, 6, 0) -- 6 studs below
-    platform.Name = "InvisPlatform"
-    platform.Parent = workspace
-    
-    -- Add highlight to platform
+    -- Optional: Add Highlight
     local highlight = Instance.new("Highlight")
-    highlight.Adornee = platform
+    highlight.Adornee = fakeRoot
     highlight.FillColor = Color3.fromRGB(0, 255, 0)
-    highlight.FillTransparency = 0.75
+    highlight.FillTransparency = 0.25
     highlight.OutlineTransparency = 1
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Parent = platform
-    
-    -- Create invisible seat on platform
-    seat = Instance.new("Seat")
-    seat.Name = "InvisSeat"
-    seat.Anchored = true
-    seat.CanCollide = false
-    seat.Transparency = 1
-    seat.Size = Vector3.new(2, 1, 2)
-    seat.CFrame = platform.CFrame * CFrame.new(0, 1, 0) -- seat on top of platform
-    seat.Parent = workspace
-    
-    -- Make character semi-transparent
-    setTransparency(char, 0.5)
-    
-    -- Tween character to above platform
-    if char.PrimaryPart then
-        local goal = {CFrame = seat.CFrame * CFrame.new(0, 3, 0)} -- slightly above seat
-        tween = TweenService:Create(
-            char.PrimaryPart, 
-            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-            goal
-        )
-        
-        tween:Play()
-        
-        tween.Completed:Connect(function()
-            -- Force sit on seat after tween
-            local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-            if humanoid and seat then
-                humanoid.Sit = true
-                
-                -- Create weld constraint to keep player attached to seat
-                local weld = Instance.new("WeldConstraint")
-                weld.Part0 = seat
-                weld.Part1 = char:FindFirstChild("HumanoidRootPart")
-                weld.Parent = seat
-            end
-        end)
-    end
+    highlight.Parent = fakeRoot
 end
 
--- Function to remove the platform and reset character
-local function removePlatform()
-    local char = LocalPlayer.Character
-    
-    -- Reset character transparency and sitting state
-    if char then
-        local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-        if humanoid then
-            humanoid.Sit = false
-        end
-        setTransparency(char, 0)
+local function removeFakeRoot()
+    if fakeRoot then
+        fakeRoot:Destroy()
+        fakeRoot = nil
     end
-    
-    -- Cancel any active tweens
-    if tween then
-        tween:Cancel()
-        tween = nil
-    end
-    
-    -- Destroy seat and platform
-    if seat then
-        seat:Destroy()
-        seat = nil
-    end
-    
-    if platform then
-        platform:Destroy()
-        platform = nil
-    end
-    
-    -- Remove clone
-    removeClone()
 end
 --//
 
@@ -214,17 +84,14 @@ Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix =
 Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
-local followPlatformOn = True
-
 MiscTab:CreateToggle({
     Name = "Invisible",
     CurrentValue = false,
     Callback = function(state)
-        followPlatformOn = state
         if state then
-            createPlatform()
+            createFakeRoot()
         else
-            removePlatform()
+            removeFakeRoot()
         end
     end
 })
