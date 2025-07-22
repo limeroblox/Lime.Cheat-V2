@@ -185,21 +185,22 @@ local lockedTarget = nil
 
 --// Aimbot Target Finder
 local function findClosestTarget()
-    local mouse = UserInputService:GetMouseLocation()
-    local bestTarget, shortestDistance = nil, math.huge
+    local mousePos = UserInputService:GetMouseLocation()
+    local cam = workspace.CurrentCamera
+    local bestTarget, closestDist = nil, math.huge
 
     local function tryTarget(char)
         if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
         local part = char:FindFirstChild(config.TargetPart)
         if not part then return end
 
-        local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(part.Position)
+        local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
         if not onScreen then return end
 
-        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
-        if dist < shortestDistance then
+        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+        if dist < closestDist then
             bestTarget = part
-            shortestDistance = dist
+            closestDist = dist
         end
     end
 
@@ -222,13 +223,18 @@ end
 local function handleAimbot()
     if not config.AimbotEnabled then return end
 
-    local holdingInput =
+    local useInput =
         (config.Aimbot_Mode == "PC" and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)) or
         (config.Aimbot_Mode == "Xbox" and UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2))
 
-    if not holdingInput then
+    if not useInput then
         lockedTarget = nil
         return
+    end
+
+    -- Validate locked target still alive and visible
+    if lockedTarget and (not lockedTarget.Parent or not lockedTarget.Parent:FindFirstChild("Humanoid") or lockedTarget.Parent.Humanoid.Health <= 0) then
+        lockedTarget = nil
     end
 
     if not lockedTarget then
@@ -236,13 +242,10 @@ local function handleAimbot()
     end
 
     if lockedTarget then
-        workspace.CurrentCamera.CFrame = CFrame.new(
-            workspace.CurrentCamera.CFrame.Position,
-            lockedTarget.Position
-        )
+        local cam = workspace.CurrentCamera
+        cam.CFrame = CFrame.new(cam.CFrame.Position, lockedTarget.Position)
     end
 end
-
 
 --// Main Loop
 local lastHit = 0
