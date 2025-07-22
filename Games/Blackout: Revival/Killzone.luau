@@ -1,30 +1,3 @@
---// Services
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-
---// Remotes
-local MeleeStorage = ReplicatedStorage:WaitForChild("MeleeStorage")
-local Events = MeleeStorage:WaitForChild("Events")
-local HitRemote = Events:WaitForChild("Hit")
-local SwingRemote = Events:WaitForChild("Swing")
-
-local GunEvents = ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Events")
-local GunShoot = GunEvents:WaitForChild("Shoot")
-local GunHit = GunEvents:WaitForChild("Hit")
-
---// Config
-local config = {
-    Enabled = false,
-    NPC_KillAura = false,
-    NPC_GunAura = false,
-    Range = 15,
-    HeadChance = 20,
-    Delay = 0.1
-}
 
 --// UI
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
@@ -64,6 +37,34 @@ local Window = Rayfield:CreateWindow({
       Key = {"Blackout"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
    }
 })
+
+--// Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+--// Remotes
+local MeleeStorage = ReplicatedStorage:WaitForChild("MeleeStorage")
+local Events = MeleeStorage:WaitForChild("Events")
+local HitRemote = Events:WaitForChild("Hit")
+local SwingRemote = Events:WaitForChild("Swing")
+
+local GunEvents = ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Events")
+local GunShoot = GunEvents:WaitForChild("Shoot")
+local GunHit = GunEvents:WaitForChild("Hit")
+
+--// Config
+local config = {
+    Enabled = false,
+    NPC_KillAura = false,
+    NPC_GunAura = false,
+    Range = 15,
+    HeadChance = 20,
+    Delay = 0.1
+}
 
 local Tab = Window:CreateTab("KillAura", 4483362458)
 local AimbotTab = Window:CreateTab("Aimbot", 4483362458)
