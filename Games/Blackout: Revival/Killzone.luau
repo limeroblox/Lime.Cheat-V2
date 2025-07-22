@@ -76,13 +76,17 @@ Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
 --// Services
-local Players 		= game:GetService("Players")
-local LocalPlayer 	= Players.LocalPlayer
-local RunService 	= game:GetService("RunService")
+local Players 		      = game:GetService("Players")
+local RunService 	      = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService 	= game:GetService("TweenService")
+local TweenService 	   = game:GetService("TweenService")
 local UserInputService 	= game:GetService("UserInputService")
-local Camera 		= workspace.CurrentCamera
+
+--// Vars
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local lockedTarget = nil
+
 
 --// Remotes
 local MeleeStorage 	= ReplicatedStorage:WaitForChild("MeleeStorage")
@@ -183,110 +187,110 @@ local function scanAllNPCs(callback)
 end
 
 
-local lockedTarget = nil
 
--- Utility: Check if aim button pressed
+--// Input Check
 local function isHoldingAim()
-  if not config.AimbotEnabled then return false end
-  if config.Aimbot_Mode == "PC" then
-    return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-  elseif config.Aimbot_Mode == "Xbox" then
-    return UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
-  end
-  return false
+	if config.Aimbot_Mode == "PC" then
+		return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+	elseif config.Aimbot_Mode == "Xbox" then
+		return UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
+	end
+	return false
 end
 
--- Utility: Find the best target (player or NPC)
-local function findTarget()
-  local mousePos = UserInputService:GetMouseLocation()
-  local bestPart, bestDist = nil, config.FOVRange
-  local function tryChar(char)
-    if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
-    local part = char:FindFirstChild(config.TargetPart)
-    if not part then return end
-    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-    if not onScreen then return end
-    local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-    if dist < bestDist then
-      bestDist = dist
-      bestPart = part
-    end
-  end
+-- Target Finder
+local function findClosestTarget()
+	local mousePos = UserInputService:GetMouseLocation()
+	local bestTarget, closestDist = nil, math.huge
 
-  if config.Aimbot_Players then
-    for _, player in ipairs(Players:GetPlayers()) do
-      if player ~= LocalPlayer and player.Character then
-        tryChar(player.Character)
-      end
-    end
-  end
+	local function tryChar(char)
+		if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
+		local part = char:FindFirstChild(config.TargetPart)
+		if not part then return end
+		local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+		if not onScreen then return end
 
-  if config.Aimbot_NPCs and scanAllNPCs then
-    scanAllNPCs(tryChar)
-  end
+		local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+		if dist < closestDist then
+			bestTarget = part
+			closestDist = dist
+		end
+	end
 
-  return bestPart
+	-- Check players
+	if config.Aimbot_Players then
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= LocalPlayer and plr.Character then
+				tryChar(plr.Character)
+			end
+		end
+	end
+
+	-- Check NPCs
+	if config.Aimbot_NPCs and scanAllNPCs then
+		scanAllNPCs(tryChar)
+	end
+
+	return bestTarget
 end
-
--- Core aimbot logic
-RunService.RenderStepped:Connect(function()
-  if not isHoldingAim() then
-    lockedTarget = nil
-    return
-  end
-
-  -- Ensure current locked target is valid
-  if lockedTarget and (not lockedTarget.Parent or lockedTarget.Parent.Humanoid.Health <= 0) then
-    lockedTarget = nil
-  end
-
-  if not lockedTarget then
-    lockedTarget = findTarget()
-  end
-
-  if lockedTarget then
-    Camera.CFrame = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
-  end
-end)
 
 --// Main Loop
 local lastHit = 0
 RunService.RenderStepped:Connect(function()
-    local now = tick()
+	local now = tick()
+	local cam = workspace.CurrentCamera
 
-    -- Aimbot should run every frame (no delay)
-    handleAimbot()
+	-- Aimbot (runs every frame)
+	if config.AimbotEnabled and ((config.Aimbot_Mode == "PC" and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2))
+		or (config.Aimbot_Mode == "Xbox" and UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2))) then
 
-    -- Delay-based actions below
-    if now - lastHit < config.Delay then return end
-    lastHit = now
+		-- Validate or find new target
+		if not lockedTarget or not lockedTarget:IsDescendantOf(workspace) or
+		   (lockedTarget.Parent:FindFirstChild("Humanoid") and lockedTarget.Parent.Humanoid.Health <= 0) then
+			lockedTarget = findClosestTarget()
+		end
 
-    local myChar = LocalPlayer.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
+		-- Smooth aim
+		if lockedTarget then
+			local aimCFrame = CFrame.new(cam.CFrame.Position, lockedTarget.Position)
+			local tween = TweenService:Create(cam, TweenInfo.new(config.AimbotSmooth, Enum.EasingStyle.Sine), {CFrame = aimCFrame})
+			tween:Play()
+		end
+	else
+		lockedTarget = nil
+	end
 
-    -- Player KillAura
-    if config.Enabled then
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character then
-                local root = plr.Character:FindFirstChild("HumanoidRootPart")
-                if root and (myRoot.Position - root.Position).Magnitude <= config.Range then
-                    fireHit(plr.Character)
-                end
-            end
-        end
-    end
+	-- Delay-based logic
+	if now - lastHit < config.Delay then return end
+	lastHit = now
 
-    -- NPC KillAura
-    if config.NPC_KillAura then
-        scanAllNPCs(fireHit)
-    end
+	local myChar = LocalPlayer.Character
+	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	if not myRoot then return end
 
-    -- NPC GunAura
-    if config.NPC_GunAura then
-        scanAllNPCs(fireGun)
-    end
+	-- Player KillAura
+	if config.Enabled then
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= LocalPlayer and plr.Character then
+				local root = plr.Character:FindFirstChild("HumanoidRootPart")
+				if root and (myRoot.Position - root.Position).Magnitude <= config.Range then
+					fireHit(plr.Character)
+				end
+			end
+		end
+	end
+
+	-- NPC KillAura
+	if config.NPC_KillAura then
+		scanAllNPCs(fireHit)
+	end
+
+	-- NPC GunAura
+	if config.NPC_GunAura then
+		scanAllNPCs(fireGun)
+	end
 end)
+
 
 
 --//Load Configs
