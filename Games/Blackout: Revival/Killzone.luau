@@ -180,6 +180,70 @@ local function scanAllNPCs(callback)
     end
 end
 
+
+local lockedTarget = nil
+
+--// Aimbot Target Finder
+local function findClosestTarget()
+    local mouse = UserInputService:GetMouseLocation()
+    local bestTarget, shortestDistance = nil, math.huge
+
+    local function tryTarget(char)
+        if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
+        local part = char:FindFirstChild(config.TargetPart)
+        if not part then return end
+
+        local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(part.Position)
+        if not onScreen then return end
+
+        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+        if dist < shortestDistance then
+            bestTarget = part
+            shortestDistance = dist
+        end
+    end
+
+    if config.Aimbot_Players then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                tryTarget(plr.Character)
+            end
+        end
+    end
+
+    if config.Aimbot_NPCs then
+        scanAllNPCs(tryTarget)
+    end
+
+    return bestTarget
+end
+
+--// Aimbot Lock + Aim
+local function handleAimbot()
+    if not config.AimbotEnabled then return end
+
+    local holdingInput =
+        (config.Aimbot_Mode == "PC" and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)) or
+        (config.Aimbot_Mode == "Xbox" and UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2))
+
+    if not holdingInput then
+        lockedTarget = nil
+        return
+    end
+
+    if not lockedTarget then
+        lockedTarget = findClosestTarget()
+    end
+
+    if lockedTarget then
+        workspace.CurrentCamera.CFrame = CFrame.new(
+            workspace.CurrentCamera.CFrame.Position,
+            lockedTarget.Position
+        )
+    end
+end
+
+
 --// Main Loop
 local lastHit = 0
 RunService.RenderStepped:Connect(function()
@@ -211,7 +275,11 @@ RunService.RenderStepped:Connect(function()
     if config.NPC_GunAura then
         scanAllNPCs(fireGun)
     end
+
+    -- Aimbot
+    handleAimbot()
 end)
+
 
 --//Load Configs
 Rayfield:LoadConfiguration()
