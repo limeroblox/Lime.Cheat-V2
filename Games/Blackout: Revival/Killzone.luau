@@ -45,11 +45,27 @@ local config = {
     NPC_GunAura = false,
     Range = 15,
     HeadChance = 20,
-    Delay = 0.1
+    Delay = 0.1,
+    AimbotEnabled = false,
+    Aimbot_Players = false,
+    Aimbot_NPCs = false,
+    Aimbot_Mode = nil,
+    TargetPart = "Head"
 }
 
 local Tab = Window:CreateTab("KillAura", 4483362458)
 local AimbotTab = Window:CreateTab("Aimbot", 4483362458)
+
+
+--// Aimbot 
+AimbotTab:CreateToggle({ Name = "Enable Aimbot", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
+AimbotTab:CreateToggle({ Name = "Player Check", CurrentValue = false, Callback = function(v) config.Aimbot_Players = v end })
+AimbotTab:CreateToggle({ Name = "Npc Check", CurrentValue = false, Callback = function(v) config.Aimbot_NPCs = v end })
+AimbotTab:CreateDropdown({ Name = "Input Mode", Options = {"PC", "Xbox"}, CurrentOption = "None", Callback = function(option) config.Aimbot_Mode = option end })
+AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = "Head", Callback = function(option) config.TargetPart = option end })
+
+
+
 --// Killaura
 Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
 Tab:CreateToggle({ Name = "KillAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_KillAura = v end })
@@ -77,7 +93,7 @@ local GunShoot = GunEvents:WaitForChild("Shoot")
 local GunHit = GunEvents:WaitForChild("Hit")
 
 --// Valid R6 limbs
-local r6Limbs = {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
+local r6Limbs = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
 --// Fire Melee Hit
 local function fireHit(char)
