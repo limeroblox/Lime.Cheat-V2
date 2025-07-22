@@ -49,7 +49,7 @@ local config = {
     AimbotEnabled = false,
     Aimbot_Players = false,
     Aimbot_NPCs = false,
-    Aimbot_Mode = nil,
+    Aimbot_Mode = "PC", -- Set default to PC
     TargetPart = "Head"
 }
 
@@ -61,8 +61,8 @@ local AimbotTab = Window:CreateTab("Aimbot", 4483362458)
 AimbotTab:CreateToggle({ Name = "Enable Aimbot", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
 AimbotTab:CreateToggle({ Name = "Player Check", CurrentValue = false, Callback = function(v) config.Aimbot_Players = v end })
 AimbotTab:CreateToggle({ Name = "Npc Check", CurrentValue = false, Callback = function(v) config.Aimbot_NPCs = v end })
-AimbotTab:CreateDropdown({ Name = "Input Mode", Options = {"PC", "Xbox"}, CurrentOption = "None", Callback = function(option) config.Aimbot_Mode = option end })
-AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = "Head", Callback = function(option) config.TargetPart = option end })
+AimbotTab:CreateDropdown({ Name = "Input Mode", Options = {"PC", "Xbox"}, CurrentOption = config.Aimbot_Mode, Callback = function(option) config.Aimbot_Mode = option end })
+AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = config.TargetPart, Callback = function(option) config.TargetPart = option end })
 
 
 
@@ -182,13 +182,13 @@ end
 
 
 local lockedTarget = nil
-local isHoldingAim = false
 
 --// Input Hold Checker
 local function checkAimbotInput()
-	if config.Aimbot_Mode == "PC" then
+	local inputType = UserInputService:GetLastInputType()
+	if config.Aimbot_Mode == "PC" and inputType == Enum.UserInputType.MouseMovement then
 		return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-	elseif config.Aimbot_Mode == "Xbox" then
+	elseif config.Aimbot_Mode == "Xbox" and inputType.Name:match("Gamepad") then
 		return UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
 	end
 	return false
@@ -201,9 +201,9 @@ local function findClosestTarget()
 	local bestTarget, closestDist = nil, math.huge
 
 	local function tryTarget(char)
-		if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
+		local humanoid = char:FindFirstChild("Humanoid")
 		local part = char:FindFirstChild(config.TargetPart)
-		if not part then return end
+		if not humanoid or humanoid.Health <= 0 or not part then return end
 
 		local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
 		if not onScreen then return end
@@ -237,21 +237,26 @@ local function handleAimbot()
 		return
 	end
 
-	local isHolding = checkAimbotInput()
-	if not isHolding then
+	if not checkAimbotInput() then
 		lockedTarget = nil
 		return
 	end
 
-	-- Validate locked target
-	if lockedTarget and (not lockedTarget.Parent or not lockedTarget.Parent:FindFirstChild("Humanoid") or lockedTarget.Parent.Humanoid.Health <= 0) then
+	-- Validate target
+	if lockedTarget and (
+		not lockedTarget:IsDescendantOf(workspace) or
+		not lockedTarget.Parent:FindFirstChild("Humanoid") or
+		lockedTarget.Parent.Humanoid.Health <= 0
+	) then
 		lockedTarget = nil
 	end
 
+	-- Find new target if needed
 	if not lockedTarget then
 		lockedTarget = findClosestTarget()
 	end
 
+	-- Aim at target
 	if lockedTarget then
 		local cam = workspace.CurrentCamera
 		cam.CFrame = CFrame.new(cam.CFrame.Position, lockedTarget.Position)
@@ -261,8 +266,14 @@ end
 --// Main Loop
 local lastHit = 0
 RunService.RenderStepped:Connect(function()
-    if tick() - lastHit < config.Delay then return end
-    lastHit = tick()
+    local now = tick()
+
+    -- Aimbot should run every frame (no delay)
+    handleAimbot()
+
+    -- Delay-based actions below
+    if now - lastHit < config.Delay then return end
+    lastHit = now
 
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -289,9 +300,6 @@ RunService.RenderStepped:Connect(function()
     if config.NPC_GunAura then
         scanAllNPCs(fireGun)
     end
-
-    -- Aimbot
-    handleAimbot()
 end)
 
 
