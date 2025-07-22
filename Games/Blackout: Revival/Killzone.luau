@@ -3,7 +3,7 @@
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
    Name = "Lime.Cheat V.2 | Blackout: Revival | Killzone/Zombies",
-   Icon = 1160005068, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   Icon = Dna, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
    LoadingTitle = "Loading Script...",
    LoadingSubtitle = "By @lime.bat",
    ShowText = "Lime.Cheat V.2", -- for mobile users to unhide rayfield, change if you'd like
