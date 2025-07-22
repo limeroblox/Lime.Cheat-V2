@@ -38,24 +38,6 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
---// Services
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-
---// Remotes
-local MeleeStorage = ReplicatedStorage:WaitForChild("MeleeStorage")
-local Events = MeleeStorage:WaitForChild("Events")
-local HitRemote = Events:WaitForChild("Hit")
-local SwingRemote = Events:WaitForChild("Swing")
-
-local GunEvents = ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Events")
-local GunShoot = GunEvents:WaitForChild("Shoot")
-local GunHit = GunEvents:WaitForChild("Hit")
-
 --// Config
 local config = {
     Enabled = false,
@@ -76,7 +58,23 @@ Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix =
 Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
---//
+--// Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+--// Remotes
+local MeleeStorage = ReplicatedStorage:WaitForChild("MeleeStorage")
+local Events = MeleeStorage:WaitForChild("Events")
+local HitRemote = Events:WaitForChild("Hit")
+local SwingRemote = Events:WaitForChild("Swing")
+
+local GunEvents = ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Events")
+local GunShoot = GunEvents:WaitForChild("Shoot")
+local GunHit = GunEvents:WaitForChild("Hit")
 
 --// Valid R6 limbs
 local r6Limbs = {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
