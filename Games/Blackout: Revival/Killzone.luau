@@ -40,21 +40,22 @@ local Window = Rayfield:CreateWindow({
 
 --// Config
 local config = {
-    Enabled = false,
-    NPC_KillAura = false,
-    NPC_GunAura = false,
-    Range = 15,
-    HeadChance = 20,
-    Delay = 0.1,
-    AimbotEnabled = false,
-    Aimbot_Players = false,
-    Aimbot_NPCs = false,
-    Aimbot_Mode = "PC", -- Set default to PC
-    TargetPart = "Head"
+    Enabled 		= false,
+    NPC_KillAura 	= false,
+    NPC_GunAura 	= false,
+    Range 		= 15,
+    HeadChance 		= 20,
+    Delay 		= 0.1,
+    AimbotEnabled 	= false,
+    Aimbot_Players 	= false,
+    Aimbot_NPCs 	= false,
+    Aimbot_Mode 	= "PC", -- Set default to PC
+    TargetPart 		= "Head",
+    FOVRange   		= 100    -- Max screen distance
 }
 
-local Tab = Window:CreateTab("KillAura", 4483362458)
-local AimbotTab = Window:CreateTab("Aimbot", 4483362458)
+local Tab 		= Window:CreateTab("KillAura", 4483362458)
+local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
 
 
 --// Aimbot 
@@ -75,25 +76,26 @@ Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
 --// Services
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
+local Players 		= game:GetService("Players")
+local LocalPlayer 	= Players.LocalPlayer
+local RunService 	= game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
+local TweenService 	= game:GetService("TweenService")
+local UserInputService 	= game:GetService("UserInputService")
+local Camera 		= workspace.CurrentCamera
 
 --// Remotes
-local MeleeStorage = ReplicatedStorage:WaitForChild("MeleeStorage")
-local Events = MeleeStorage:WaitForChild("Events")
-local HitRemote = Events:WaitForChild("Hit")
-local SwingRemote = Events:WaitForChild("Swing")
+local MeleeStorage 	= ReplicatedStorage:WaitForChild("MeleeStorage")
+local Events 		= MeleeStorage:WaitForChild("Events")
+local HitRemote 	= Events:WaitForChild("Hit")
+local SwingRemote 	= Events:WaitForChild("Swing")
 
-local GunEvents = ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Events")
-local GunShoot = GunEvents:WaitForChild("Shoot")
-local GunHit = GunEvents:WaitForChild("Hit")
+local GunEvents 	= ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Events")
+local GunShoot 		= GunEvents:WaitForChild("Shoot")
+local GunHit 		= GunEvents:WaitForChild("Hit")
 
---// Valid R6 limbs
-local r6Limbs = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
+--// R6 limbs
+local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
 --// Fire Melee Hit
 local function fireHit(char)
@@ -183,85 +185,69 @@ end
 
 local lockedTarget = nil
 
---// Input Hold Checker
-local function checkAimbotInput()
-	local inputType = UserInputService:GetLastInputType()
-	if config.Aimbot_Mode == "PC" and inputType == Enum.UserInputType.MouseMovement then
-		return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-	elseif config.Aimbot_Mode == "Xbox" and inputType.Name:match("Gamepad") then
-		return UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
-	end
-	return false
+-- Utility: Check if aim button pressed
+local function isHoldingAim()
+  if not config.AimbotEnabled then return false end
+  if config.Aimbot_Mode == "PC" then
+    return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+  elseif config.Aimbot_Mode == "Xbox" then
+    return UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
+  end
+  return false
 end
 
---// Aimbot Target Finder
-local function findClosestTarget()
-	local mousePos = UserInputService:GetMouseLocation()
-	local cam = workspace.CurrentCamera
-	local bestTarget, closestDist = nil, math.huge
+-- Utility: Find the best target (player or NPC)
+local function findTarget()
+  local mousePos = UserInputService:GetMouseLocation()
+  local bestPart, bestDist = nil, config.FOVRange
+  local function tryChar(char)
+    if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
+    local part = char:FindFirstChild(config.TargetPart)
+    if not part then return end
+    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+    if not onScreen then return end
+    local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+    if dist < bestDist then
+      bestDist = dist
+      bestPart = part
+    end
+  end
 
-	local function tryTarget(char)
-		local humanoid = char:FindFirstChild("Humanoid")
-		local part = char:FindFirstChild(config.TargetPart)
-		if not humanoid or humanoid.Health <= 0 or not part then return end
+  if config.Aimbot_Players then
+    for _, player in ipairs(Players:GetPlayers()) do
+      if player ~= LocalPlayer and player.Character then
+        tryChar(player.Character)
+      end
+    end
+  end
 
-		local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
-		if not onScreen then return end
+  if config.Aimbot_NPCs and scanAllNPCs then
+    scanAllNPCs(tryChar)
+  end
 
-		local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-		if dist < closestDist then
-			bestTarget = part
-			closestDist = dist
-		end
-	end
-
-	if config.Aimbot_Players then
-		for _, plr in ipairs(Players:GetPlayers()) do
-			if plr ~= LocalPlayer and plr.Character then
-				tryTarget(plr.Character)
-			end
-		end
-	end
-
-	if config.Aimbot_NPCs then
-		scanAllNPCs(tryTarget)
-	end
-
-	return bestTarget
+  return bestPart
 end
 
---// Aimbot Lock + Aim
-local function handleAimbot()
-	if not config.AimbotEnabled then
-		lockedTarget = nil
-		return
-	end
+-- Core aimbot logic
+RunService.RenderStepped:Connect(function()
+  if not isHoldingAim() then
+    lockedTarget = nil
+    return
+  end
 
-	if not checkAimbotInput() then
-		lockedTarget = nil
-		return
-	end
+  -- Ensure current locked target is valid
+  if lockedTarget and (not lockedTarget.Parent or lockedTarget.Parent.Humanoid.Health <= 0) then
+    lockedTarget = nil
+  end
 
-	-- Validate target
-	if lockedTarget and (
-		not lockedTarget:IsDescendantOf(workspace) or
-		not lockedTarget.Parent:FindFirstChild("Humanoid") or
-		lockedTarget.Parent.Humanoid.Health <= 0
-	) then
-		lockedTarget = nil
-	end
+  if not lockedTarget then
+    lockedTarget = findTarget()
+  end
 
-	-- Find new target if needed
-	if not lockedTarget then
-		lockedTarget = findClosestTarget()
-	end
-
-	-- Aim at target
-	if lockedTarget then
-		local cam = workspace.CurrentCamera
-		cam.CFrame = CFrame.new(cam.CFrame.Position, lockedTarget.Position)
-	end
-end
+  if lockedTarget then
+    Camera.CFrame = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
+  end
+end)
 
 --// Main Loop
 local lastHit = 0
