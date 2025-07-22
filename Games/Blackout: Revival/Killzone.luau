@@ -182,69 +182,80 @@ end
 
 
 local lockedTarget = nil
+local isHoldingAim = false
+
+--// Input Hold Checker
+local function checkAimbotInput()
+	if config.Aimbot_Mode == "PC" then
+		return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+	elseif config.Aimbot_Mode == "Xbox" then
+		return UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
+	end
+	return false
+end
 
 --// Aimbot Target Finder
 local function findClosestTarget()
-    local mousePos = UserInputService:GetMouseLocation()
-    local cam = workspace.CurrentCamera
-    local bestTarget, closestDist = nil, math.huge
+	local mousePos = UserInputService:GetMouseLocation()
+	local cam = workspace.CurrentCamera
+	local bestTarget, closestDist = nil, math.huge
 
-    local function tryTarget(char)
-        if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
-        local part = char:FindFirstChild(config.TargetPart)
-        if not part then return end
+	local function tryTarget(char)
+		if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
+		local part = char:FindFirstChild(config.TargetPart)
+		if not part then return end
 
-        local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
-        if not onScreen then return end
+		local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
+		if not onScreen then return end
 
-        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-        if dist < closestDist then
-            bestTarget = part
-            closestDist = dist
-        end
-    end
+		local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+		if dist < closestDist then
+			bestTarget = part
+			closestDist = dist
+		end
+	end
 
-    if config.Aimbot_Players then
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character then
-                tryTarget(plr.Character)
-            end
-        end
-    end
+	if config.Aimbot_Players then
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= LocalPlayer and plr.Character then
+				tryTarget(plr.Character)
+			end
+		end
+	end
 
-    if config.Aimbot_NPCs then
-        scanAllNPCs(tryTarget)
-    end
+	if config.Aimbot_NPCs then
+		scanAllNPCs(tryTarget)
+	end
 
-    return bestTarget
+	return bestTarget
 end
 
 --// Aimbot Lock + Aim
 local function handleAimbot()
-    if not config.AimbotEnabled then return end
+	if not config.AimbotEnabled then
+		lockedTarget = nil
+		return
+	end
 
-    local useInput =
-        (config.Aimbot_Mode == "PC" and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)) or
-        (config.Aimbot_Mode == "Xbox" and UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2))
+	local isHolding = checkAimbotInput()
+	if not isHolding then
+		lockedTarget = nil
+		return
+	end
 
-    if not useInput then
-        lockedTarget = nil
-        return
-    end
+	-- Validate locked target
+	if lockedTarget and (not lockedTarget.Parent or not lockedTarget.Parent:FindFirstChild("Humanoid") or lockedTarget.Parent.Humanoid.Health <= 0) then
+		lockedTarget = nil
+	end
 
-    -- Validate locked target still alive and visible
-    if lockedTarget and (not lockedTarget.Parent or not lockedTarget.Parent:FindFirstChild("Humanoid") or lockedTarget.Parent.Humanoid.Health <= 0) then
-        lockedTarget = nil
-    end
+	if not lockedTarget then
+		lockedTarget = findClosestTarget()
+	end
 
-    if not lockedTarget then
-        lockedTarget = findClosestTarget()
-    end
-
-    if lockedTarget then
-        local cam = workspace.CurrentCamera
-        cam.CFrame = CFrame.new(cam.CFrame.Position, lockedTarget.Position)
-    end
+	if lockedTarget then
+		local cam = workspace.CurrentCamera
+		cam.CFrame = CFrame.new(cam.CFrame.Position, lockedTarget.Position)
+	end
 end
 
 --// Main Loop
