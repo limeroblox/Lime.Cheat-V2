@@ -184,6 +184,7 @@ end
 --// Killaura/Gunaura Loop
 local lastHit = 0
 RunService.RenderStepped:Connect(function()
+	local now = tick()
 	-- Delay-based Logic
 	if now - lastHit < config.Delay then return end
 	lastHit = now
