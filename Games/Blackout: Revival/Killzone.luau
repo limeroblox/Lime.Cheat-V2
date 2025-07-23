@@ -242,7 +242,9 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
--- Wall check (visibility) logic
+local lockedTarget = nil
+
+-- Wall check
 local function isVisible(part)
 	if not part or not part:IsA("BasePart") or not Camera then 
 		return false 
@@ -253,7 +255,6 @@ local function isVisible(part)
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
-	-- Blacklist local player and the target model (player or NPC)
 	local ignoreList = {Camera}
 	if LocalPlayer.Character then
 		table.insert(ignoreList, LocalPlayer.Character)
@@ -266,15 +267,10 @@ local function isVisible(part)
 	rayParams.FilterDescendantsInstances = ignoreList
 
 	local result = workspace:Raycast(origin, direction, rayParams)
-	
-	-- No hit = clear line of sight
-	if not result then return true end
-
-	-- If the hit object is part of the target, still count as visible
-	return result.Instance and part:IsDescendantOf(result.Instance.Parent)
+	return not result or (result.Instance and part:IsDescendantOf(result.Instance.Parent))
 end
 
--- Aimbot target detection
+-- Find closest valid target
 local function getClosestAimbotTarget()
 	local closest, shortest = nil, math.huge
 	local mousePos = UserInputService:GetMouseLocation()
@@ -323,13 +319,21 @@ local function getClosestAimbotTarget()
 	return closest
 end
 
+-- Lock-on Aimbot loop
 RunService.RenderStepped:Connect(function()
 	if config.AimbotEnabled and AimbotHolding then
-		local target = getClosestAimbotTarget()
-		if target and target:IsA("BasePart") then
-			local camCF = CFrame.new(Camera.CFrame.Position, target.Position)
+		-- Lock onto a new target when just pressed
+		if not lockedTarget or not lockedTarget:IsDescendantOf(workspace) or (config.WallCheck and not isVisible(lockedTarget)) then
+			lockedTarget = getClosestAimbotTarget()
+		end
+
+		if lockedTarget then
+			local camCF = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
 			TweenService:Create(Camera, TweenInfo.new(config.Smoothness or 0.1, Enum.EasingStyle.Sine), {CFrame = camCF}):Play()
 		end
+	else
+		-- Release target when aim key is released
+		lockedTarget = nil
 	end
 end)
 
