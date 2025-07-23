@@ -75,16 +75,18 @@ Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
 --// Services
-local Players 		      = game:GetService("Players")
-local RunService 	      = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService 	   = game:GetService("TweenService")
-local UserInputService 	= game:GetService("UserInputService")
+local Players 		     = game:GetService("Players")
+local RunService 	     = game:GetService("RunService")
+local ReplicatedStorage      = game:GetService("ReplicatedStorage")
+local TweenService 	     = game:GetService("TweenService")
+local UserInputService 	     = game:GetService("UserInputService")
 
 --// Vars
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local lockedTarget = nil
+local LocalPlayer 	     = Players.LocalPlayer
+local Camera 		     = workspace.CurrentCamera
+local lockedTarget 	     = nil
+local Chars 		     = workspace:WaitForChild("Chars")
+
 
 
 --// Remotes
@@ -193,7 +195,6 @@ local function isHoldingAim()
 		or UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
 end
 
---// Find Closest Target
 local function findClosestTarget()
 	local mousePos = UserInputService:GetMouseLocation()
 	local bestTarget, closestDist = nil, math.huge
@@ -213,14 +214,17 @@ local function findClosestTarget()
 		end
 	end
 
+	-- Players (from Chars folder)
 	if config.Aimbot_Players then
-		for _, plr in ipairs(Players:GetPlayers()) do
-			if plr ~= LocalPlayer and plr.Character then
-				tryChar(plr.Character)
+		for _, char in ipairs(Chars:GetChildren()) do
+			local player = Players:GetPlayerFromCharacter(char)
+			if player and player ~= LocalPlayer then
+				tryChar(char)
 			end
 		end
 	end
 
+	-- NPCs
 	if config.Aimbot_NPCs and scanAllNPCs then
 		scanAllNPCs(tryChar)
 	end
