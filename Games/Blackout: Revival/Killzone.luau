@@ -235,22 +235,20 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 local function isVisible(part)
-    local origin = Camera.CFrame.Position
-    local direction = part.Position - origin
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, part.Parent}
+	if not part or not part:IsA("BasePart") then return false end
 
-    local result = workspace:Raycast(origin, direction, rayParams)
+	local origin = Camera.CFrame.Position
+	local direction = (part.Position - origin)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
 
-    if not result then
-        -- Nothing hit, so clear line of sight
-        return true
-    end
+	local result = workspace:Raycast(origin, direction, rayParams)
 
-    -- Check if the hit part is part of the target (or child)
-    return result.Instance and result.Instance:IsDescendantOf(part.Parent)
+	-- If it hits something, make sure it's part of the target's character/model
+	return result and result.Instance and part:IsDescendantOf(result.Instance.Parent)
 end
+
 
 local function getClosestAimbotTarget()
 	local closest, shortest = nil, math.huge
