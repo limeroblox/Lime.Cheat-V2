@@ -324,11 +324,13 @@ RunService:BindToRenderStep("AimbotLock", Enum.RenderPriority.Camera.Value + 1, 
 			lockedTarget = getClosestAimbotTarget()
 		end
 
-		-- Hard set camera to face target (overwrites recoil)
 		if lockedTarget then
 			local camPos = Camera.CFrame.Position
-			local newCF = CFrame.new(camPos, lockedTarget.Position)
-			Camera.CFrame = newCF
+			local targetCF = CFrame.new(camPos, lockedTarget.Position)
+			local currentCF = Camera.CFrame
+			local smoothness = math.clamp(config.Smoothness or 1, 0, 1)
+
+			Camera.CFrame = currentCF:Lerp(targetCF, smoothness)
 		end
 	else
 		lockedTarget = nil
