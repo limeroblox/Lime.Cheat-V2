@@ -48,6 +48,7 @@ local config = {
 	Delay           = 0.1,
 
 	AimbotEnabled = false,
+	NPC_Aimbot = false,
 	AimPart = "Head",
 	Smoothness = 0.1,
 	WallCheck = true
@@ -57,6 +58,8 @@ local Tab 		= Window:CreateTab("KillAura", 4483362458)
 local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
 
 AimbotTab:CreateToggle({ Name = "Enable", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
+AimbotTab:CreateToggle({ Name = "Include NPCs", CurrentValue = false, Callback = function(v) config.NPC_Aimbot = v end })
+
 AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = "Head", Callback = function(v) config.AimPart = v end })
 AimbotTab:CreateSlider({ Name = "Smoothness", Range = {0.05, 0.5}, Increment = 0.05, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Smoothness = v end })
 AimbotTab:CreateToggle({ Name = "Wall Check", CurrentValue = true, Callback = function(v) config.WallCheck = v end })
@@ -251,18 +254,19 @@ end
 
 local function getClosestAimbotTarget()
 	local closest, shortest = nil, math.huge
+	local mousePos = UserInputService:GetMouseLocation()
+
+	-- Player targets
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= LocalPlayer and plr.Character then
-			local human = plr.Character:FindFirstChild("Humanoid")
-			local part = plr.Character:FindFirstChild(config.AimPart or "Head")
+			local char = plr.Character
+			local human = char:FindFirstChild("Humanoid")
+			local part = char:FindFirstChild(config.AimPart or "Head")
 			if human and human.Health > 0 and part then
-				if config.WallCheck and not isVisible(part) then
-					continue -- optional; only if your Luau supports it
-				end
+				if config.WallCheck and not isVisible(part) then continue end
 				local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 				if onScreen then
-					local mousePos = UserInputService:GetMouseLocation()
-					local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mousePos.X, mousePos.Y)).Magnitude
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
 					if dist < shortest then
 						closest = part
 						shortest = dist
@@ -271,6 +275,26 @@ local function getClosestAimbotTarget()
 			end
 		end
 	end
+
+	-- NPC targets
+	if config.NPC_Aimbot then
+		scanAllNPCs(function(npc)
+			local human = npc:FindFirstChild("Humanoid")
+			local part = npc:FindFirstChild(config.AimPart or "Head")
+			if human and human.Health > 0 and part then
+				if config.WallCheck and not isVisible(part) then return end
+				local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+				if onScreen then
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+					if dist < shortest then
+						closest = part
+						shortest = dist
+					end
+				end
+			end
+		end)
+	end
+
 	return closest
 end
 
