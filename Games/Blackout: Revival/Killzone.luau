@@ -48,11 +48,12 @@ local config = {
 	Delay           = 0.1,
 
 	AimbotEnabled = false,
- 	Aimbot_Players = true,
+ 	Aimbot_Players = false,
     	Aimbot_NPCs = false, -- Reserved for future use
     	TargetPart = "Head",
     	SmoothTime = 0.08,
-    	FOVRange = 120
+    	FOVRange = 120,
+	WallCheck = false
 }
 
 local Tab 		= Window:CreateTab("KillAura", 4483362458)
@@ -64,6 +65,7 @@ AimbotTab:CreateToggle({ Name = "NPC Check", CurrentValue = false, Callback = fu
 AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = "Head", Callback = function(opt) config.TargetPart = opt end })
 AimbotTab:CreateSlider({ Name = "FOV Range", Range = {20, 300}, Increment = 5, CurrentValue = 120, Callback = function(val) config.FOVRange = val end })
 AimbotTab:CreateSlider({ Name = "Smoothness", Range = {0, 0.3}, Increment = 0.01, CurrentValue = 0.08, Callback = function(val) config.SmoothTime = val end })
+AimbotTab:CreateToggle({ Name = "Wall Check", CurrentValue = false, Callback = function(value) config.WallCheck = value end })
 
 
 
@@ -221,54 +223,53 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
---// Services
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 
---// Variables
-local Camera = workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
-local Chars = workspace:WaitForChild("Chars")
 
---// Config
-local config = {
-    AimbotEnabled = false,
-    Aimbot_Players = true,
-    Aimbot_NPCs = false, -- Reserved for future use
-    TargetPart = "Head",
-    SmoothTime = 0.08,
-    FOVRange = 120
-}
 
 --// State
 local lockedTarget = nil
 
---// Helper: Check if input is held
+--// Holding check
 local function isHoldingAimbot()
-    return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) or
-           UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
+	return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) -- PC
+		or UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2) -- Xbox
 end
 
---// Helper: Get closest valid character
+--// Target finder
+local function canSeeTarget(originPos, targetPos)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local raycastResult = workspace:Raycast(originPos, (targetPos - originPos), raycastParams)
+    -- If nothing hit or hit target itself, target is visible
+    return not raycastResult or raycastResult.Instance:IsDescendantOf(targetPos.Parent)
+end
+
 local function findClosestTarget()
     local mousePos = UserInputService:GetMouseLocation()
     local closest, shortest = nil, math.huge
+    local camPos = Camera.CFrame.Position
 
     for _, char in ipairs(Chars:GetChildren()) do
         local player = Players:GetPlayerFromCharacter(char)
-        if player and player ~= LocalPlayer then
+        if player and player ~= LocalPlayer and config.Aimbot_Players then
             local humanoid = char:FindFirstChild("Humanoid")
-            local targetPart = char:FindFirstChild(config.TargetPart)
+            local part = char:FindFirstChild(config.TargetPart or "Head")
 
-            if humanoid and humanoid.Health > 0 and targetPart then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+            if humanoid and humanoid.Health > 0 and part then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
                 if onScreen then
                     local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
                     if dist < config.FOVRange and dist < shortest then
-                        closest = targetPart
-                        shortest = dist
+                        if config.WallCheck then
+                            if canSeeTarget(camPos, part.Position) then
+                                closest = part
+                                shortest = dist
+                            end
+                        else
+                            closest = part
+                            shortest = dist
+                        end
                     end
                 end
             end
@@ -278,21 +279,27 @@ local function findClosestTarget()
     return closest
 end
 
---// Aimbot loop
+--// Aimbot Loop
 RunService.RenderStepped:Connect(function()
-    if config.AimbotEnabled and isHoldingAimbot() then
-        if not lockedTarget or not lockedTarget:IsDescendantOf(workspace) then
-            lockedTarget = findClosestTarget()
-        end
+	if config.AimbotEnabled and isHoldingAimbot() then
+		-- Refresh target if it's gone or dead
+		if not lockedTarget
+			or not lockedTarget:IsDescendantOf(workspace)
+			or (lockedTarget.Parent:FindFirstChild("Humanoid") and lockedTarget.Parent.Humanoid.Health <= 0)
+		then
+			lockedTarget = findClosestTarget()
+		end
 
-        if lockedTarget then
-            local camCF = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
-            local tween = TweenService:Create(Camera, TweenInfo.new(config.SmoothTime, Enum.EasingStyle.Sine), {CFrame = camCF})
-            tween:Play()
-        end
-    else
-        lockedTarget = nil
-    end
+		-- Smooth aim if target valid
+		if lockedTarget then
+			local camCF = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
+			TweenService:Create(Camera, TweenInfo.new(config.SmoothTime or 0.1, Enum.EasingStyle.Sine), {
+				CFrame = camCF
+			}):Play()
+		end
+	else
+		lockedTarget = nil
+	end
 end)
 
 --//Load Configs
