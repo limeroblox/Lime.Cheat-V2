@@ -328,8 +328,7 @@ RunService:BindToRenderStep("AimbotLock", Enum.RenderPriority.Camera.Value + 1, 
 			local camPos = Camera.CFrame.Position
 			local targetCF = CFrame.new(camPos, lockedTarget.Position)
 			local currentCF = Camera.CFrame
-			local smoothness = math.clamp(config.Smoothness or 1, 0, 1)
-
+			local smoothness = config.Smoothness
 			Camera.CFrame = currentCF:Lerp(targetCF, smoothness)
 		end
 	else
