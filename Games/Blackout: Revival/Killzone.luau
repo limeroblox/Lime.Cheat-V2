@@ -251,7 +251,13 @@ local function isVisible(part)
 	end
 
 	local origin = Camera.CFrame.Position
-	local direction = (part.Position - origin)
+	local targetPos = part.Position
+	local direction = (targetPos - origin)
+	local distance = direction.Magnitude
+
+	-- Normalize direction and subtract a bit to avoid hitting the part itself
+	direction = direction.Unit * (distance - 0.1)
+
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
@@ -263,11 +269,15 @@ local function isVisible(part)
 	if model then
 		table.insert(ignoreList, model)
 	end
-
 	rayParams.FilterDescendantsInstances = ignoreList
 
 	local result = workspace:Raycast(origin, direction, rayParams)
-	return not result or (result.Instance and part:IsDescendantOf(result.Instance.Parent))
+
+	-- If no hit, it's visible. If it hit something before the target, it's blocked.
+	if not result then return true end
+
+	local hitDist = (result.Position - origin).Magnitude
+	return hitDist >= distance - 1 -- Give a small margin for ray precision
 end
 
 -- Find closest valid target
