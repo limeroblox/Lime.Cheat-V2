@@ -233,7 +233,7 @@ end)
 
 local function isVisible(part)
 	local origin = Camera.CFrame.Position
-	local direction = (part.Position - origin)
+	local direction = (part.Position - origin).Unit * 1000
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 	rayParams.FilterDescendantsInstances = {LocalPlayer.Character, part.Parent}
