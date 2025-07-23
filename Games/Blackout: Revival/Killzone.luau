@@ -59,9 +59,8 @@ local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
 
 AimbotTab:CreateToggle({ Name = "Enable", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
 AimbotTab:CreateToggle({ Name = "Include NPCs", CurrentValue = false, Callback = function(v) config.NPC_Aimbot = v end })
-
 AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = "Head", Callback = function(v) config.AimPart = v end })
-AimbotTab:CreateSlider({ Name = "Smoothness", Range = {0.05, 0.5}, Increment = 0.05, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Smoothness = v end })
+AimbotTab:CreateSlider({ Name = "Smoothness", Range = {0, 1}, Increment = 0.05, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Smoothness = v end })
 AimbotTab:CreateToggle({ Name = "Wall Check", CurrentValue = true, Callback = function(v) config.WallCheck = v end })
 
 
@@ -125,16 +124,25 @@ local function fireHit(char)
     end
 end
 
---// Fire Gun Shot
+--//Gunaura Function
+
 local function fireGun(char)
-    if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
-    local part = char:FindFirstChild("Head") or char:FindFirstChild("Torso")
-    if not part then return end
-    pcall(function()
-        GunShoot:FireServer()
-        GunHit:FireServer(part, math.random(1000, 9999))
-    end)
+	if not char or not char:IsA("Model") then return end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then return end
+
+	local part = char:FindFirstChild("Head") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
+	if not part or not part:IsA("BasePart") then return end
+
+	if GunShoot and GunHit then
+		pcall(function()
+			GunShoot:FireServer()
+			GunHit:FireServer(part)
+		end)
+	end
 end
+
 
 --// Recursive scan NPC folder
 local function scanFolder(folder, func)
@@ -238,24 +246,24 @@ local function isVisible(part)
 	if not part or not part:IsA("BasePart") then return false end
 
 	local origin = Camera.CFrame.Position
-	local direction = (part.Position - origin)
+	local direction = part.Position - origin
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 	rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
 
 	local result = workspace:Raycast(origin, direction, rayParams)
 
-	-- If it hits something, make sure it's part of the target's character/model
-	return result and result.Instance and part:IsDescendantOf(result.Instance.Parent)
+	-- Must hit something AND the hit part must belong to the target model
+	if not result or not result.Instance then return false end
+	return part:IsDescendantOf(result.Instance:FindFirstAncestorOfClass("Model"))
 end
-
 
 local function getClosestAimbotTarget()
 	local closest, shortest = nil, math.huge
 	local mousePos = UserInputService:GetMouseLocation()
 
 	local function evaluateTarget(part)
-		if not part then return end
+		if not part or not part:IsA("BasePart") then return end
 		if config.WallCheck and not isVisible(part) then return end
 
 		local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
@@ -270,12 +278,14 @@ local function getClosestAimbotTarget()
 
 	-- Player targets
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and plr.Character then
+		if plr ~= LocalPlayer then
 			local char = plr.Character
-			local human = char:FindFirstChild("Humanoid")
-			local part = char:FindFirstChild(config.AimPart or "Head")
-			if human and human.Health > 0 then
-				evaluateTarget(part)
+			if char then
+				local human = char:FindFirstChild("Humanoid")
+				local part = char:FindFirstChild(config.AimPart or "Head")
+				if human and human.Health > 0 then
+					evaluateTarget(part)
+				end
 			end
 		end
 	end
@@ -283,10 +293,12 @@ local function getClosestAimbotTarget()
 	-- NPC targets
 	if config.NPC_Aimbot then
 		scanAllNPCs(function(npc)
-			local human = npc:FindFirstChild("Humanoid")
-			local part = npc:FindFirstChild(config.AimPart or "Head")
-			if human and human.Health > 0 then
-				evaluateTarget(part)
+			if npc and npc:IsA("Model") then
+				local human = npc:FindFirstChild("Humanoid")
+				local part = npc:FindFirstChild(config.AimPart or "Head")
+				if human and human.Health > 0 then
+					evaluateTarget(part)
+				end
 			end
 		end)
 	end
@@ -297,7 +309,7 @@ end
 RunService.RenderStepped:Connect(function()
 	if config.AimbotEnabled and AimbotHolding then
 		local target = getClosestAimbotTarget()
-		if target then
+		if target and target:IsA("BasePart") then
 			local camCF = CFrame.new(Camera.CFrame.Position, target.Position)
 			TweenService:Create(Camera, TweenInfo.new(config.Smoothness or 0.1, Enum.EasingStyle.Sine), {CFrame = camCF}):Play()
 		end
