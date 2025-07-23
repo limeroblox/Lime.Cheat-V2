@@ -244,19 +244,15 @@ end)
 
 local lockedTarget = nil
 
--- Wall check
-local function isVisible(part)
-	if not part or not part:IsA("BasePart") or not Camera then 
+local function isVisible(part, origin)
+	if not part or not part:IsA("BasePart") or not origin then 
 		return false 
 	end
 
-	local origin = Camera.CFrame.Position
 	local targetPos = part.Position
 	local direction = (targetPos - origin)
 	local distance = direction.Magnitude
-
-	-- Normalize direction and subtract a bit to avoid hitting the part itself
-	direction = direction.Unit * (distance - 0.1)
+	direction = direction.Unit * (distance - 0.1) -- slight buffer
 
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
@@ -272,22 +268,22 @@ local function isVisible(part)
 	rayParams.FilterDescendantsInstances = ignoreList
 
 	local result = workspace:Raycast(origin, direction, rayParams)
-
-	-- If no hit, it's visible. If it hit something before the target, it's blocked.
 	if not result then return true end
 
 	local hitDist = (result.Position - origin).Magnitude
-	return hitDist >= distance - 1 -- Give a small margin for ray precision
+	return hitDist >= distance - 1
 end
+
 
 -- Find closest valid target
 local function getClosestAimbotTarget()
 	local closest, shortest = nil, math.huge
 	local mousePos = UserInputService:GetMouseLocation()
+	local camPos = Camera.CFrame.Position
 
 	local function evaluateTarget(part)
 		if not part or not part:IsA("BasePart") then return end
-		if config.WallCheck and not isVisible(part) then return end
+		if config.WallCheck and not isVisible(part, camPos) then return end
 
 		local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 		if not onScreen then return end
@@ -329,20 +325,26 @@ local function getClosestAimbotTarget()
 	return closest
 end
 
+
 -- Lock-on Aimbot loop
-RunService.RenderStepped:Connect(function()
+RunService:BindToRenderStep("AimbotLock", Enum.RenderPriority.Camera.Value + 1, function()
 	if config.AimbotEnabled and AimbotHolding then
-		-- Lock onto a new target when just pressed
-		if not lockedTarget or not lockedTarget:IsDescendantOf(workspace) or (config.WallCheck and not isVisible(lockedTarget)) then
+		local camPos = Camera.CFrame.Position
+
+		if not lockedTarget
+			or not lockedTarget:IsDescendantOf(workspace)
+			or (config.WallCheck and not isVisible(lockedTarget, camPos))
+		then
 			lockedTarget = getClosestAimbotTarget()
 		end
 
 		if lockedTarget then
-			local camCF = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
-			TweenService:Create(Camera, TweenInfo.new(config.Smoothness, Enum.EasingStyle.Sine), {CFrame = camCF}):Play()
+			local targetCF = CFrame.new(camPos, lockedTarget.Position)
+			local currentCF = Camera.CFrame
+			local smoothness = config.Smoothness
+			Camera.CFrame = currentCF:Lerp(targetCF, smoothness)
 		end
 	else
-		-- Release target when aim key is released
 		lockedTarget = nil
 	end
 end)
