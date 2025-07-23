@@ -262,14 +262,16 @@ local function getClosestAimbotTarget()
 			local char = plr.Character
 			local human = char:FindFirstChild("Humanoid")
 			local part = char:FindFirstChild(config.AimPart or "Head")
+
 			if human and human.Health > 0 and part then
-				if config.WallCheck and not isVisible(part) then continue end
-				local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-				if onScreen then
-					local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-					if dist < shortest then
-						closest = part
-						shortest = dist
+				if not config.WallCheck or isVisible(part) then
+					local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+					if onScreen then
+						local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+						if dist < shortest then
+							closest = part
+							shortest = dist
+						end
 					end
 				end
 			end
@@ -281,14 +283,16 @@ local function getClosestAimbotTarget()
 		scanAllNPCs(function(npc)
 			local human = npc:FindFirstChild("Humanoid")
 			local part = npc:FindFirstChild(config.AimPart or "Head")
+
 			if human and human.Health > 0 and part then
-				if config.WallCheck and not isVisible(part) then return end
-				local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-				if onScreen then
-					local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-					if dist < shortest then
-						closest = part
-						shortest = dist
+				if not config.WallCheck or isVisible(part) then
+					local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+					if onScreen then
+						local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+						if dist < shortest then
+							closest = part
+							shortest = dist
+						end
 					end
 				end
 			end
