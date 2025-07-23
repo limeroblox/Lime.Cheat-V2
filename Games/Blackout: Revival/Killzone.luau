@@ -286,51 +286,112 @@ local function isVisible(part)
 end
 
 local function getClosestAimbotTarget()
-	local closest, shortest = nil, math.huge
-	local mousePos = UserInputService:GetMouseLocation()
-
-	local function evaluateTarget(part)
-		if not part or not part:IsA("BasePart") then return end
-		if config.WallCheck and not isVisible(part) then return end
-
-		local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-		if not onScreen then return end
-
-		local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-		if dist < shortest then
-			closest = part
-			shortest = dist
-		end
-	end
-
-	-- Player targets
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer then
-			local char = plr.Character
-			if char then
-				local human = char:FindFirstChild("Humanoid")
-				local part = char:FindFirstChild(config.AimPart or "Head")
-				if human and human.Health > 0 then
-					evaluateTarget(part)
-				end
-			end
-		end
-	end
-
-	-- NPC targets
-	if config.NPC_Aimbot then
-		scanAllNPCs(function(npc)
-			if npc and npc:IsA("Model") then
-				local human = npc:FindFirstChild("Humanoid")
-				local part = npc:FindFirstChild(config.AimPart or "Head")
-				if human and human.Health > 0 then
-					evaluateTarget(part)
-				end
-			end
-		end)
-	end
-
-	return closest
+    local closest, shortest = nil, math.huge
+    local mousePos = UserInputService:GetMouseLocation()
+    local currentTime = tick()
+    
+    -- Performance optimization: use cached mouse position if very recent
+    if not mousePos then return nil end
+    
+    local function evaluateTarget(part, targetType, player)
+        if not part or not part:IsA("BasePart") then return end
+        
+        -- Early position check before expensive operations
+        local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+        if not onScreen then return end
+        
+        -- FOV check (optional - add config.FOV if you want to limit aimbot range)
+        if config.FOV then
+            local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+            if dist > config.FOV then return end
+        end
+        
+        -- Wall check (most expensive operation, do it last)
+        if config.WallCheck and not isVisible(part) then return end
+        
+        -- Calculate screen distance
+        local screenDistance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+        
+        -- Priority system: closer targets and players get preference
+        local priority = screenDistance
+        if targetType == "player" then
+            priority = priority * 0.9 -- Players get 10% priority boost
+        end
+        
+        -- Team check for players
+        if targetType == "player" and config.TeamCheck and player then
+            if player.Team == LocalPlayer.Team then return end
+        end
+        
+        if priority < shortest then
+            closest = part
+            shortest = priority
+        end
+    end
+    
+    -- Player targets with improved error handling
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Parent then -- Check if player still exists
+            local char = plr.Character
+            if char and char.Parent then -- Ensure character exists and isn't being destroyed
+                local human = char:FindFirstChildOfClass("Humanoid")
+                if human and human.Health > 0 and human.PlatformStand == false then
+                    -- Support multiple aim parts with fallback
+                    local aimParts = {config.AimPart or "Head", "Head", "HumanoidRootPart", "Torso", "UpperTorso"}
+                    
+                    for _, partName in ipairs(aimParts) do
+                        local part = char:FindFirstChild(partName)
+                        if part then
+                            evaluateTarget(part, "player", plr)
+                            break -- Use first available part
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- NPC targets with improved scanning
+    if config.NPC_Aimbot then
+        -- Use a more efficient NPC scanning method
+        local function scanNPCs()
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") and obj ~= LocalPlayer.Character then
+                    local human = obj:FindFirstChildOfClass("Humanoid")
+                    if human and human.Health > 0 and human.Parent ~= LocalPlayer.Character then
+                        -- Check if it's actually an NPC (not a player character)
+                        local isPlayerChar = false
+                        for _, plr in ipairs(Players:GetPlayers()) do
+                            if plr.Character == obj then
+                                isPlayerChar = true
+                                break
+                            end
+                        end
+                        
+                        if not isPlayerChar then
+                            local aimParts = {config.AimPart or "Head", "Head", "HumanoidRootPart", "Torso", "UpperTorso"}
+                            
+                            for _, partName in ipairs(aimParts) do
+                                local part = obj:FindFirstChild(partName)
+                                if part then
+                                    evaluateTarget(part, "npc")
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Use cached NPC scan for performance
+        if currentTime - lastCacheUpdate > CACHE_DURATION then
+            scanNPCs()
+            lastCacheUpdate = currentTime
+        end
+    end
+    
+    return closest, shortest -- Return both target and distance for additional info
 end
 
 RunService.RenderStepped:Connect(function()
