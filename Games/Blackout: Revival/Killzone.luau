@@ -246,9 +246,7 @@ local lockedTarget = nil
 
 -- Wall check
 local function isVisible(part)
-	if not part or not part:IsA("BasePart") or not Camera then 
-		return false 
-	end
+	if not part or not part:IsA("BasePart") or not Camera then return false end
 
 	local origin = Camera.CFrame.Position
 	local direction = (part.Position - origin)
@@ -256,26 +254,24 @@ local function isVisible(part)
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
 	local ignoreList = {Camera}
-	if LocalPlayer.Character then
-		table.insert(ignoreList, LocalPlayer.Character)
-	end
+	local char = LocalPlayer.Character
+	if char then table.insert(ignoreList, char) end
+
 	local model = part:FindFirstAncestorOfClass("Model")
-	if model then
-		table.insert(ignoreList, model)
-	end
+	if model then table.insert(ignoreList, model) end
 
 	rayParams.FilterDescendantsInstances = ignoreList
 
 	local result = workspace:Raycast(origin, direction, rayParams)
-	return not result or (result.Instance and part:IsDescendantOf(result.Instance.Parent))
+	return not result or part:IsDescendantOf(result.Instance.Parent)
 end
 
--- Find closest valid target
+-- Get closest valid target
 local function getClosestAimbotTarget()
 	local closest, shortest = nil, math.huge
 	local mousePos = UserInputService:GetMouseLocation()
 
-	local function evaluateTarget(part)
+	local function evaluate(part)
 		if not part or not part:IsA("BasePart") then return end
 		if config.WallCheck and not isVisible(part) then return end
 
@@ -289,28 +285,26 @@ local function getClosestAimbotTarget()
 		end
 	end
 
-	-- Player targets
+	-- Players
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= LocalPlayer then
 			local char = plr.Character
-			if char then
-				local human = char:FindFirstChild("Humanoid")
-				local part = char:FindFirstChild(config.AimPart or "Head")
-				if human and human.Health > 0 then
-					evaluateTarget(part)
-				end
+			local part = char and char:FindFirstChild(config.AimPart or "Head")
+			local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+			if humanoid and humanoid.Health > 0 then
+				evaluate(part)
 			end
 		end
 	end
 
-	-- NPC targets
+	-- NPCs
 	if config.NPC_Aimbot then
 		scanAllNPCs(function(npc)
 			if npc and npc:IsA("Model") then
-				local human = npc:FindFirstChild("Humanoid")
 				local part = npc:FindFirstChild(config.AimPart or "Head")
-				if human and human.Health > 0 then
-					evaluateTarget(part)
+				local humanoid = npc:FindFirstChildOfClass("Humanoid")
+				if humanoid and humanoid.Health > 0 then
+					evaluate(part)
 				end
 			end
 		end)
@@ -319,20 +313,24 @@ local function getClosestAimbotTarget()
 	return closest
 end
 
--- Lock-on Aimbot loop
-RunService.RenderStepped:Connect(function()
+-- Aimbot lock-on loop
+RunService:BindToRenderStep("AimbotLock", Enum.RenderPriority.Camera.Value + 1, function()
 	if config.AimbotEnabled and AimbotHolding then
-		-- Lock onto a new target when just pressed
-		if not lockedTarget or not lockedTarget:IsDescendantOf(workspace) or (config.WallCheck and not isVisible(lockedTarget)) then
+		-- Lock target if invalid
+		if not lockedTarget
+			or not lockedTarget:IsDescendantOf(workspace)
+			or (config.WallCheck and not isVisible(lockedTarget))
+		then
 			lockedTarget = getClosestAimbotTarget()
 		end
 
+		-- Hard set camera to face target (overwrites recoil)
 		if lockedTarget then
-			local camCF = CFrame.new(Camera.CFrame.Position, lockedTarget.Position)
-			TweenService:Create(Camera, TweenInfo.new(config.Smoothness or 0.1, Enum.EasingStyle.Sine), {CFrame = camCF}):Play()
+			local camPos = Camera.CFrame.Position
+			local newCF = CFrame.new(camPos, lockedTarget.Position)
+			Camera.CFrame = newCF
 		end
 	else
-		-- Release target when aim key is released
 		lockedTarget = nil
 	end
 end)
