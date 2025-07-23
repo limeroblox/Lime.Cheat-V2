@@ -40,30 +40,29 @@ local Window = Rayfield:CreateWindow({
 
 --// Config
 local config = {
-    Enabled 		= false,
-    NPC_KillAura 	= false,
-    NPC_GunAura 	= false,
-    Range 		= 15,
-    HeadChance 		= 20,
-    Delay 		= 0.1,
-    AimbotEnabled 	= false,
-    Aimbot_Players 	= false,
-    Aimbot_NPCs 	= false,
-    Aimbot_Mode 	= "PC", -- Set default to PC
-    TargetPart 		= "Head",
-    FOVRange   		= 100    -- Max screen distance
+	Enabled         = false,
+	NPC_KillAura    = false,
+	NPC_GunAura     = false,
+	Range           = 15,
+	HeadChance      = 20,
+	Delay           = 0.1,
+
+	AimbotEnabled   = false,
+	Aimbot_Players  = false,
+	Aimbot_NPCs     = false,
+	TargetPart      = "Head",
+	AimbotSmooth    = 0.08, -- Smoother aiming
+	FOVRange        = 100
 }
 
 local Tab 		= Window:CreateTab("KillAura", 4483362458)
 local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
 
 
---// Aimbot 
+--// Aimbot
 AimbotTab:CreateToggle({ Name = "Enable Aimbot", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
 AimbotTab:CreateToggle({ Name = "Player Check", CurrentValue = false, Callback = function(v) config.Aimbot_Players = v end })
 AimbotTab:CreateToggle({ Name = "Npc Check", CurrentValue = false, Callback = function(v) config.Aimbot_NPCs = v end })
-AimbotTab:CreateDropdown({ Name = "Input Mode", Options = {"PC", "Xbox"}, CurrentOption = config.Aimbot_Mode, Callback = function(option) config.Aimbot_Mode = option end })
-AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = config.TargetPart, Callback = function(option) config.TargetPart = option end })
 
 
 
@@ -188,36 +187,32 @@ end
 
 
 
---// Input Check
+--// Check if aiming (PC or Xbox)
 local function isHoldingAim()
-	if config.Aimbot_Mode == "PC" then
-		return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-	elseif config.Aimbot_Mode == "Xbox" then
-		return UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
-	end
-	return false
+	return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+		or UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2)
 end
 
--- Target Finder
+--// Find Closest Target
 local function findClosestTarget()
 	local mousePos = UserInputService:GetMouseLocation()
 	local bestTarget, closestDist = nil, math.huge
 
 	local function tryChar(char)
-		if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
+		local humanoid = char:FindFirstChild("Humanoid")
 		local part = char:FindFirstChild(config.TargetPart)
-		if not part then return end
+		if not humanoid or humanoid.Health <= 0 or not part then return end
+
 		local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 		if not onScreen then return end
 
 		local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-		if dist < closestDist then
+		if dist < config.FOVRange and dist < closestDist then
 			bestTarget = part
 			closestDist = dist
 		end
 	end
 
-	-- Check players
 	if config.Aimbot_Players then
 		for _, plr in ipairs(Players:GetPlayers()) do
 			if plr ~= LocalPlayer and plr.Character then
@@ -226,7 +221,6 @@ local function findClosestTarget()
 		end
 	end
 
-	-- Check NPCs
 	if config.Aimbot_NPCs and scanAllNPCs then
 		scanAllNPCs(tryChar)
 	end
@@ -240,27 +234,25 @@ RunService.RenderStepped:Connect(function()
 	local now = tick()
 	local cam = workspace.CurrentCamera
 
-	-- Aimbot (runs every frame)
-	if config.AimbotEnabled and ((config.Aimbot_Mode == "PC" and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2))
-		or (config.Aimbot_Mode == "Xbox" and UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2))) then
-
-		-- Validate or find new target
-		if not lockedTarget or not lockedTarget:IsDescendantOf(workspace) or
-		   (lockedTarget.Parent:FindFirstChild("Humanoid") and lockedTarget.Parent.Humanoid.Health <= 0) then
+	-- Aimbot
+	if config.AimbotEnabled and isHoldingAim() then
+		if not lockedTarget
+			or not lockedTarget:IsDescendantOf(workspace)
+			or (lockedTarget.Parent:FindFirstChild("Humanoid") and lockedTarget.Parent.Humanoid.Health <= 0)
+		then
 			lockedTarget = findClosestTarget()
 		end
 
-		-- Smooth aim
 		if lockedTarget then
-			local aimCFrame = CFrame.new(cam.CFrame.Position, lockedTarget.Position)
-			local tween = TweenService:Create(cam, TweenInfo.new(config.AimbotSmooth, Enum.EasingStyle.Sine), {CFrame = aimCFrame})
+			local aimCF = CFrame.new(cam.CFrame.Position, lockedTarget.Position)
+			local tween = TweenService:Create(cam, TweenInfo.new(config.AimbotSmooth, Enum.EasingStyle.Sine), {CFrame = aimCF})
 			tween:Play()
 		end
 	else
 		lockedTarget = nil
 	end
 
-	-- Delay-based logic
+	-- Delay-based Logic
 	if now - lastHit < config.Delay then return end
 	lastHit = now
 
@@ -290,8 +282,6 @@ RunService.RenderStepped:Connect(function()
 		scanAllNPCs(fireGun)
 	end
 end)
-
-
 
 --//Load Configs
 Rayfield:LoadConfiguration()
