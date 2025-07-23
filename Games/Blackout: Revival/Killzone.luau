@@ -242,49 +242,39 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
+-- Wall check (visibility) logic
 local function isVisible(part)
-    -- Ensure we have a valid part and camera
-    if not part or not Camera then 
-        return false 
-    end
-    
-    local origin = Camera.CFrame.Position
-    local targetPosition = part.Position
-    local direction = targetPosition - origin
-    local distance = direction.Magnitude
-    
-    -- Normalize the direction vector
-    direction = direction.Unit * (distance - 0.1) -- Slightly shorter to avoid hitting the target itself
-    
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    
-    -- Filter out the local player's character and camera
-    local filterList = {Camera}
-    if LocalPlayer.Character then
-        table.insert(filterList, LocalPlayer.Character)
-    end
-    
-    -- Also filter out the target part's model to avoid self-intersection
-    local targetModel = part:FindFirstAncestorOfClass("Model")
-    if targetModel then
-        table.insert(filterList, targetModel)
-    end
-    
-    rayParams.FilterDescendantsInstances = filterList
-    
-    local result = workspace:Raycast(origin, direction, rayParams)
-    
-    -- If no hit, the part is visible (no walls blocking)
-    if not result then 
-        return true 
-    end
-    
-    -- If we hit something, check if it's closer than our target
-    local hitDistance = (result.Position - origin).Magnitude
-    return hitDistance >= distance - 0.1 -- Allow small margin for floating point errors
+	if not part or not part:IsA("BasePart") or not Camera then 
+		return false 
+	end
+
+	local origin = Camera.CFrame.Position
+	local direction = (part.Position - origin)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+	-- Blacklist local player and the target model (player or NPC)
+	local ignoreList = {Camera}
+	if LocalPlayer.Character then
+		table.insert(ignoreList, LocalPlayer.Character)
+	end
+	local model = part:FindFirstAncestorOfClass("Model")
+	if model then
+		table.insert(ignoreList, model)
+	end
+
+	rayParams.FilterDescendantsInstances = ignoreList
+
+	local result = workspace:Raycast(origin, direction, rayParams)
+	
+	-- No hit = clear line of sight
+	if not result then return true end
+
+	-- If the hit object is part of the target, still count as visible
+	return result.Instance and part:IsDescendantOf(result.Instance.Parent)
 end
 
+-- Aimbot target detection
 local function getClosestAimbotTarget()
 	local closest, shortest = nil, math.huge
 	local mousePos = UserInputService:GetMouseLocation()
