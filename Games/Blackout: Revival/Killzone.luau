@@ -256,20 +256,14 @@ local function getClosestAimbotTarget()
 	local closest, shortest = nil, math.huge
 	local mousePos = UserInputService:GetMouseLocation()
 
-	-- Helper to calculate priority
 	local function evaluateTarget(part)
 		if not part then return end
 		if config.WallCheck and not isVisible(part) then return end
 
 		local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-		local dist
-		if onScreen then
-			dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-		else
-			-- fallback to distance if not visible on screen
-			dist = (Camera.CFrame.Position - part.Position).Magnitude
-		end
+		if not onScreen then return end
 
+		local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
 		if dist < shortest then
 			closest = part
 			shortest = dist
