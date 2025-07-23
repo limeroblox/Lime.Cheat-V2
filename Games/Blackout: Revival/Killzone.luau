@@ -243,17 +243,46 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 local function isVisible(part)
-	local origin = Camera.CFrame.Position
-	local direction = part.Position - origin
-	local rayParams = RaycastParams.new()
-	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-	rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-
-	local result = workspace:Raycast(origin, direction, rayParams)
-
-	-- Must hit something AND the hit part must belong to the target model
-	if not result or not result.Instance then return false end
-	return part:IsDescendantOf(result.Instance:FindFirstAncestorOfClass("Model"))
+    -- Ensure we have a valid part and camera
+    if not part or not Camera then 
+        return false 
+    end
+    
+    local origin = Camera.CFrame.Position
+    local targetPosition = part.Position
+    local direction = targetPosition - origin
+    local distance = direction.Magnitude
+    
+    -- Normalize the direction vector
+    direction = direction.Unit * (distance - 0.1) -- Slightly shorter to avoid hitting the target itself
+    
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    -- Filter out the local player's character and camera
+    local filterList = {Camera}
+    if LocalPlayer.Character then
+        table.insert(filterList, LocalPlayer.Character)
+    end
+    
+    -- Also filter out the target part's model to avoid self-intersection
+    local targetModel = part:FindFirstAncestorOfClass("Model")
+    if targetModel then
+        table.insert(filterList, targetModel)
+    end
+    
+    rayParams.FilterDescendantsInstances = filterList
+    
+    local result = workspace:Raycast(origin, direction, rayParams)
+    
+    -- If no hit, the part is visible (no walls blocking)
+    if not result then 
+        return true 
+    end
+    
+    -- If we hit something, check if it's closer than our target
+    local hitDistance = (result.Position - origin).Magnitude
+    return hitDistance >= distance - 0.1 -- Allow small margin for floating point errors
 end
 
 local function getClosestAimbotTarget()
