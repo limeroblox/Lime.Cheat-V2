@@ -249,7 +249,9 @@ local function getClosestAimbotTarget()
 			local human = plr.Character:FindFirstChild("Humanoid")
 			local part = plr.Character:FindFirstChild(config.AimPart or "Head")
 			if human and human.Health > 0 and part then
-			 if config.WallCheck and not isVisible(part) then continue end
+				if config.WallCheck and not isVisible(part) then
+					continue -- optional; only if your Luau supports it
+				end
 				local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 				if onScreen then
 					local mousePos = UserInputService:GetMouseLocation()
