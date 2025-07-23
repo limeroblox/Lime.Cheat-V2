@@ -249,10 +249,9 @@ local function isVisible(part, origin)
 		return false 
 	end
 
-	local targetPos = part.Position
-	local direction = (targetPos - origin)
+	local direction = part.Position - origin
 	local distance = direction.Magnitude
-	direction = direction.Unit * (distance - 0.1) -- slight buffer
+	direction = direction.Unit * (distance)
 
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
@@ -265,13 +264,14 @@ local function isVisible(part, origin)
 	if model then
 		table.insert(ignoreList, model)
 	end
+
 	rayParams.FilterDescendantsInstances = ignoreList
 
 	local result = workspace:Raycast(origin, direction, rayParams)
 	if not result then return true end
 
-	local hitDist = (result.Position - origin).Magnitude
-	return hitDist >= distance - 1
+	-- Accept if we hit part of the same model
+	return part:IsDescendantOf(result.Instance.Parent)
 end
 
 
@@ -332,6 +332,7 @@ RunService:BindToRenderStep("AimbotLock", Enum.RenderPriority.Camera.Value + 1, 
 		local camPos = Camera.CFrame.Position
 
 		if not lockedTarget
+			or not lockedTarget:IsA("BasePart")
 			or not lockedTarget:IsDescendantOf(workspace)
 			or (config.WallCheck and not isVisible(lockedTarget, camPos))
 		then
@@ -340,14 +341,13 @@ RunService:BindToRenderStep("AimbotLock", Enum.RenderPriority.Camera.Value + 1, 
 
 		if lockedTarget then
 			local targetCF = CFrame.new(camPos, lockedTarget.Position)
-			local currentCF = Camera.CFrame
-			local smoothness = config.Smoothness
-			Camera.CFrame = currentCF:Lerp(targetCF, smoothness)
+			Camera.CFrame = Camera.CFrame:Lerp(targetCF, config.Smoothness or 0.1)
 		end
 	else
 		lockedTarget = nil
 	end
 end)
+
 
 --//Load Configs
 Rayfield:LoadConfiguration()
