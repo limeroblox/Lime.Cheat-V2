@@ -243,8 +243,6 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 local function isVisible(part)
-	if not part or not part:IsA("BasePart") then return false end
-
 	local origin = Camera.CFrame.Position
 	local direction = part.Position - origin
 	local rayParams = RaycastParams.new()
