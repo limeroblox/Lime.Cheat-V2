@@ -256,24 +256,34 @@ local function getClosestAimbotTarget()
 	local closest, shortest = nil, math.huge
 	local mousePos = UserInputService:GetMouseLocation()
 
+	-- Helper to calculate priority
+	local function evaluateTarget(part)
+		if not part then return end
+		if config.WallCheck and not isVisible(part) then return end
+
+		local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+		local dist
+		if onScreen then
+			dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+		else
+			-- fallback to distance if not visible on screen
+			dist = (Camera.CFrame.Position - part.Position).Magnitude
+		end
+
+		if dist < shortest then
+			closest = part
+			shortest = dist
+		end
+	end
+
 	-- Player targets
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= LocalPlayer and plr.Character then
 			local char = plr.Character
 			local human = char:FindFirstChild("Humanoid")
 			local part = char:FindFirstChild(config.AimPart or "Head")
-
-			if human and human.Health > 0 and part then
-				if not config.WallCheck or isVisible(part) then
-					local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-					if onScreen then
-						local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-						if dist < shortest then
-							closest = part
-							shortest = dist
-						end
-					end
-				end
+			if human and human.Health > 0 then
+				evaluateTarget(part)
 			end
 		end
 	end
@@ -283,18 +293,8 @@ local function getClosestAimbotTarget()
 		scanAllNPCs(function(npc)
 			local human = npc:FindFirstChild("Humanoid")
 			local part = npc:FindFirstChild(config.AimPart or "Head")
-
-			if human and human.Health > 0 and part then
-				if not config.WallCheck or isVisible(part) then
-					local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-					if onScreen then
-						local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-						if dist < shortest then
-							closest = part
-							shortest = dist
-						end
-					end
-				end
+			if human and human.Health > 0 then
+				evaluateTarget(part)
 			end
 		end)
 	end
