@@ -286,239 +286,51 @@ local function isVisible(part)
 end
 
 local function getClosestAimbotTarget()
-    local closest, shortest = nil, math.huge
-    local mousePos = UserInputService:GetMouseLocation()
-    
-    local function evaluateTarget(part, targetType, humanoid)
-        if not part or not part:IsA("BasePart") then return end
-        if config.WallCheck and not isVisible(part) then return end
-        
-        local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-        if not onScreen then return end
-        
-        -- FOV check if configured
-        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-        if config.FOV and dist > config.FOV then return end
-        
-        -- Priority system: factor in health and target type
-        local priority = dist
-        
-        -- Lower health targets get priority (multiply by health percentage)
-        if humanoid and config.HealthPriority then
-            local healthPercent = humanoid.Health / humanoid.MaxHealth
-            priority = priority * (0.5 + healthPercent * 0.5) -- Range: 0.5x to 1.0x multiplier
-        end
-        
-        -- Players get slight priority over NPCs
-        if targetType == "player" and config.PlayerPriority then
-            priority = priority * 0.9
-        end
-        
-        if priority < shortest then
-            closest = part
-            shortest = priority
-        end
-    end
-    
-    -- Player targets
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Parent then -- Check player still exists
-            local char = plr.Character
-            if char and char.Parent then -- Ensure character exists
-                local human = char:FindFirstChild("Humanoid")
-                if human and human.Health > 0 and not human.PlatformStand then -- Avoid ragdolled players
-                    -- Team check
-                    if config.TeamCheck and plr.Team == LocalPlayer.Team then
-                        -- Skip teammates
-                    else
-                        -- Try R6 body parts as fallback
-                        local targetPart = char:FindFirstChild(config.AimPart or "Head")
-                        if not targetPart then
-                            -- R6 fallback parts in order of preference
-                            local fallbackParts = {"Head", "Torso", "HumanoidRootPart", "Left Arm", "Right Arm"}
-                            for _, partName in ipairs(fallbackParts) do
-                                targetPart = char:FindFirstChild(partName)
-                                if targetPart then break end
-                            end
-                        end
-                        
-                        if targetPart then
-                            evaluateTarget(targetPart, "player", human)
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    -- NPC targets with improved detection for R6
-    if config.NPC_Aimbot then
-        scanAllNPCs(function(npc)
-            if npc and npc:IsA("Model") and npc ~= LocalPlayer.Character then
-                local human = npc:FindFirstChild("Humanoid") or npc:FindFirstChildOfClass("Humanoid")
-                if human and human.Health > 0 and not human.PlatformStand then
-                    -- Ensure it's actually an NPC and not a player character
-                    local isPlayerCharacter = false
-                    for _, plr in ipairs(Players:GetPlayers()) do
-                        if plr.Character == npc then
-                            isPlayerCharacter = true
-                            break
-                        end
-                    end
-                    
-                    if not isPlayerCharacter then
-                        -- Try R6 body parts as fallback for NPCs too
-                        local targetPart = npc:FindFirstChild(config.AimPart or "Head")
-                        if not targetPart then
-                            -- R6 fallback parts for NPCs
-                            local fallbackParts = {"Head", "Torso", "HumanoidRootPart", "Left Arm", "Right Arm"}
-                            for _, partName in ipairs(fallbackParts) do
-                                targetPart = npc:FindFirstChild(partName)
-                                if targetPart then break end
-                            end
-                        end
-                        
-                        if targetPart then
-                            evaluateTarget(targetPart, "npc", human)
-                        end
-                    end
-                end
-            end
-        end)
-    end
-    
-    return closest
-end
+	local closest, shortest = nil, math.huge
+	local mousePos = UserInputService:GetMouseLocation()
 
--- Enhanced version with velocity prediction for R6
-local function getClosestAimbotTargetWithPrediction()
-    local closest, shortest = nil, math.huge
-    local mousePos = UserInputService:GetMouseLocation()
-    
-    local function evaluateTargetWithPrediction(part, targetType, humanoid)
-        if not part or not part:IsA("BasePart") then return end
-        
-        local targetPos = part.Position
-        
-        -- Velocity prediction if enabled (works better with Torso in R6)
-        if config.Prediction and part.AssemblyLinearVelocity then
-            local velocity = part.AssemblyLinearVelocity
-            local distance = (targetPos - Camera.CFrame.Position).Magnitude
-            local timeToTarget = distance / (config.BulletSpeed or 1000)
-            targetPos = targetPos + (velocity * timeToTarget * (config.PredictionStrength or 1))
-        end
-        
-        if config.WallCheck and not isVisible(part) then return end
-        
-        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPos)
-        if not onScreen then return end
-        
-        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-        if config.FOV and dist > config.FOV then return end
-        
-        local priority = dist
-        
-        if humanoid and config.HealthPriority then
-            local healthPercent = humanoid.Health / humanoid.MaxHealth
-            priority = priority * (0.5 + healthPercent * 0.5)
-        end
-        
-        if targetType == "player" and config.PlayerPriority then
-            priority = priority * 0.9
-        end
-        
-        if priority < shortest then
-            closest = part
-            shortest = priority
-        end
-    end
-    
-    -- Same player/NPC logic but with prediction for R6
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Parent then
-            local char = plr.Character
-            if char and char.Parent then
-                local human = char:FindFirstChild("Humanoid")
-                if human and human.Health > 0 and not human.PlatformStand then
-                    if not (config.TeamCheck and plr.Team == LocalPlayer.Team) then
-                        local targetPart = char:FindFirstChild(config.AimPart or "Head")
-                        if not targetPart then
-                            -- R6 specific fallback parts
-                            local fallbackParts = {"Head", "Torso", "HumanoidRootPart", "Left Arm", "Right Arm"}
-                            for _, partName in ipairs(fallbackParts) do
-                                targetPart = char:FindFirstChild(partName)
-                                if targetPart then break end
-                            end
-                        end
-                        
-                        if targetPart then
-                            evaluateTargetWithPrediction(targetPart, "player", human)
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    if config.NPC_Aimbot then
-        scanAllNPCs(function(npc)
-            if npc and npc:IsA("Model") and npc ~= LocalPlayer.Character then
-                local human = npc:FindFirstChild("Humanoid") or npc:FindFirstChildOfClass("Humanoid")
-                if human and human.Health > 0 and not human.PlatformStand then
-                    local isPlayerCharacter = false
-                    for _, plr in ipairs(Players:GetPlayers()) do
-                        if plr.Character == npc then
-                            isPlayerCharacter = true
-                            break
-                        end
-                    end
-                    
-                    if not isPlayerCharacter then
-                        local targetPart = npc:FindFirstChild(config.AimPart or "Head")
-                        if not targetPart then
-                            -- R6 fallback parts for NPCs
-                            local fallbackParts = {"Head", "Torso", "HumanoidRootPart", "Left Arm", "Right Arm"}
-                            for _, partName in ipairs(fallbackParts) do
-                                targetPart = npc:FindFirstChild(partName)
-                                if targetPart then break end
-                            end
-                        end
-                        
-                        if targetPart then
-                            evaluateTargetWithPrediction(targetPart, "npc", human)
-                        end
-                    end
-                end
-            end
-        end)
-    end
-    
-    return closest
-end
+	local function evaluateTarget(part)
+		if not part or not part:IsA("BasePart") then return end
+		if config.WallCheck and not isVisible(part) then return end
 
--- R6 specific body part targeting function (bonus utility)
-local function getR6BodyPart(character, preferredPart)
-    if not character then return nil end
-    
-    -- R6 body parts in order of preference for different scenarios
-    local bodyParts = {
-        head = {"Head"},
-        torso = {"Torso", "HumanoidRootPart"},
-        arms = {"Left Arm", "Right Arm"},
-        legs = {"Left Leg", "Right Leg"},
-        all = {"Head", "Torso", "HumanoidRootPart", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
-    }
-    
-    local partsToCheck = bodyParts[preferredPart] or bodyParts.all
-    
-    for _, partName in ipairs(partsToCheck) do
-        local part = character:FindFirstChild(partName)
-        if part then
-            return part
-        end
-    end
-    
-    return nil
+		local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+		if not onScreen then return end
+
+		local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+		if dist < shortest then
+			closest = part
+			shortest = dist
+		end
+	end
+
+	-- Player targets
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local char = plr.Character
+			if char then
+				local human = char:FindFirstChild("Humanoid")
+				local part = char:FindFirstChild(config.AimPart or "Head")
+				if human and human.Health > 0 then
+					evaluateTarget(part)
+				end
+			end
+		end
+	end
+
+	-- NPC targets
+	if config.NPC_Aimbot then
+		scanAllNPCs(function(npc)
+			if npc and npc:IsA("Model") then
+				local human = npc:FindFirstChild("Humanoid")
+				local part = npc:FindFirstChild(config.AimPart or "Head")
+				if human and human.Health > 0 then
+					evaluateTarget(part)
+				end
+			end
+		end)
+	end
+
+	return closest
 end
 
 RunService.RenderStepped:Connect(function()
