@@ -146,63 +146,74 @@ end
 
 --// Recursive scan NPC folder
 local function scanFolder(folder, func)
-    for _, obj in ipairs(folder:GetChildren()) do
-        if obj:IsA("Folder") then
-            scanFolder(obj, func)
-        elseif obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
-            local root = obj.HumanoidRootPart
-            local myChar = LocalPlayer.Character
-            if myChar and myChar:FindFirstChild("HumanoidRootPart") and obj.Humanoid.Health > 0 then
-                local dist = (myChar.HumanoidRootPart.Position - root.Position).Magnitude
-                if dist <= config.Range then
-                    func(obj)
-                end
-            end
-        end
-    end
+	local didHit = false
+
+	for _, obj in ipairs(folder:GetChildren()) do
+		if obj:IsA("Folder") then
+			if scanFolder(obj, func) then
+				didHit = true
+			end
+		elseif obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+			local myChar = LocalPlayer.Character
+			local root = obj.HumanoidRootPart
+			if myChar and myChar:FindFirstChild("HumanoidRootPart") and obj.Humanoid.Health > 0 then
+				local dist = (myChar.HumanoidRootPart.Position - root.Position).Magnitude
+				if dist <= config.Range then
+					func(obj)
+					didHit = true
+				end
+			end
+		end
+	end
+
+	return didHit
 end
 
 --// NPC targets
 local function scanAllNPCs(callback)
-    local folders = {}
+	local folders = {}
+	local didHit = false
 
-    local npcs = workspace:FindFirstChild("NPCs")
-    if npcs then
-        table.insert(folders, npcs:FindFirstChild("Hostile"))
-        table.insert(folders, npcs:FindFirstChild("Custom"))
-    end
+	local npcs = workspace:FindFirstChild("NPCs")
+	if npcs then
+		table.insert(folders, npcs:FindFirstChild("Hostile"))
+		table.insert(folders, npcs:FindFirstChild("Custom"))
+	end
 
-    local activeTasks = workspace:FindFirstChild("ActiveTasks")
-    if activeTasks then
-        table.insert(folders, activeTasks:FindFirstChild("Location"))
-        table.insert(folders, activeTasks:FindFirstChild("Folder"))
-    end
+	local activeTasks = workspace:FindFirstChild("ActiveTasks")
+	if activeTasks then
+		table.insert(folders, activeTasks:FindFirstChild("Location"))
+		table.insert(folders, activeTasks:FindFirstChild("Folder"))
+	end
 
-    table.insert(folders, workspace:FindFirstChild("Arena"))
+	table.insert(folders, workspace:FindFirstChild("Arena"))
 
-    local waveSurvival = workspace:FindFirstChild("WaveSurvival")
-    if waveSurvival then
-        table.insert(folders, waveSurvival:FindFirstChild("NPCs"))
-    end
+	local waveSurvival = workspace:FindFirstChild("WaveSurvival")
+	if waveSurvival then
+		table.insert(folders, waveSurvival:FindFirstChild("NPCs"))
+	end
 
-    for _, folder in ipairs(folders) do
-        if folder then
-            scanFolder(folder, callback)
-        end
-    end
+	for _, folder in ipairs(folders) do
+		if folder and scanFolder(folder, callback) then
+			didHit = true
+		end
+	end
+
+	return didHit
 end
+
 
 --// Killaura/Gunaura Loop
 local lastHit = 0
 RunService.RenderStepped:Connect(function()
 	local now = tick()
-	-- Delay-based Logic
 	if now - lastHit < config.Delay then return end
-	lastHit = now
 
 	local myChar = LocalPlayer.Character
 	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 	if not myRoot then return end
+
+	local didHit = false
 
 	-- Player KillAura
 	if config.Enabled then
@@ -211,21 +222,27 @@ RunService.RenderStepped:Connect(function()
 				local root = plr.Character:FindFirstChild("HumanoidRootPart")
 				if root and (myRoot.Position - root.Position).Magnitude <= config.Range then
 					fireHit(plr.Character)
+					didHit = true
 				end
 			end
 		end
 	end
 
 	-- NPC KillAura
-	if config.NPC_KillAura then
-		scanAllNPCs(fireHit)
+	if config.NPC_KillAura and scanAllNPCs(fireHit) then
+		didHit = true
 	end
 
 	-- NPC GunAura
-	if config.NPC_GunAura then
-		scanAllNPCs(fireGun)
+	if config.NPC_GunAura and scanAllNPCs(fireGun) then
+		didHit = true
+	end
+
+	if didHit then
+		lastHit = now
 	end
 end)
+
 
 --// Aimbot Logic
 local AimbotHolding = false
