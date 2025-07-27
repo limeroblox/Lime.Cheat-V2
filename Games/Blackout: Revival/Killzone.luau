@@ -3,33 +3,6 @@
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({ Name = "Lime.Cheat V.2 | Blackout: Revival | Killzone/Zombies", Icon = 141272932, LoadingTitle = "Loading Script...", LoadingSubtitle = "By @lime.bat", ShowText = "Lime.Cheat V.2", Theme = "Default", ToggleUIKeybind = "K", DisableRayfieldPrompts = false, DisableBuildWarnings = false, ConfigurationSaving = { Enabled = true, FolderName = nil, FileName = "Lime.Cheat V.2 | Blackout: Revival Script" }, Discord = { Enabled = false, Invite = "noinvitelink", RememberJoins = true }, KeySystem = true, KeySettings = { Title = "Lime.Cheat", Subtitle = "Key System", Note = "To get the key, ask @lime.bat for the key", FileName = "Lime.Cheat Key Folder", SaveKey = true, GrabKeyFromSite = false, Key = {"Blackout"} } })
 
-local Tab 		= Window:CreateTab("KillAura", 4483362458)
-local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
-local VisualsTab 	= Window:CreateTab("Visuals", 4483362458)
-
---// Aimbot
-AimbotTab:CreateToggle({ Name = "Enable", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
-AimbotTab:CreateToggle({ Name = "Include NPCs", CurrentValue = false, Callback = function(v) config.NPC_Aimbot = v end })
-AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = "Head", Callback = function(v) config.AimPart = v end })
-AimbotTab:CreateSlider({ Name = "Lockage", Range = {0.1, 1}, Increment = 0.05, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Smoothness = v end })
-AimbotTab:CreateToggle({ Name = "Wall Check", CurrentValue = true, Callback = function(v) config.WallCheck = v end })
-
-
---// Killaura
-Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
-Tab:CreateToggle({ Name = "KillAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_KillAura = v end })
-Tab:CreateToggle({ Name = "GunAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_GunAura = v end })
-Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix = " studs", CurrentValue = 15, Callback = function(v) config.Range = v end })
-Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
-Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
-
-
---// Visuals Tab Toggles (AFTER ESP functions)
-VisualsTab:CreateToggle({ Name = "Enable ESP", CurrentValue = config.ESPEnabled, Callback = function(v) config.ESPEnabled = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox, Callback = function(v) config.ESP_ShowBox = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v UpdateESPVisibility() end })
 
 --// Services
 local Players 		= game:GetService("Players")
@@ -53,9 +26,6 @@ local SwingRemote 	= Events:WaitForChild("Swing")
 local GunEvents 	= ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Events")
 local GunShoot 		= GunEvents:WaitForChild("Shoot")
 local GunHit 		= GunEvents:WaitForChild("Hit")
-
---// R6 limbs
-local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
 --// Config
 local config = {
@@ -88,6 +58,38 @@ local Settings = {
     Tracer_FollowMouse = false,
     Tracer_Origin = "Bottom"
 }
+
+local Tab 		= Window:CreateTab("KillAura", 4483362458)
+local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
+local VisualsTab 	= Window:CreateTab("Visuals", 4483362458)
+
+--// Aimbot
+AimbotTab:CreateToggle({ Name = "Enable", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
+AimbotTab:CreateToggle({ Name = "Include NPCs", CurrentValue = false, Callback = function(v) config.NPC_Aimbot = v end })
+AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = "Head", Callback = function(v) config.AimPart = v end })
+AimbotTab:CreateSlider({ Name = "Lockage", Range = {0.1, 1}, Increment = 0.05, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Smoothness = v end })
+AimbotTab:CreateToggle({ Name = "Wall Check", CurrentValue = true, Callback = function(v) config.WallCheck = v end })
+
+
+--// Killaura
+Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
+Tab:CreateToggle({ Name = "KillAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_KillAura = v end })
+Tab:CreateToggle({ Name = "GunAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_GunAura = v end })
+Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix = " studs", CurrentValue = 15, Callback = function(v) config.Range = v end })
+Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
+Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
+
+
+--// Visuals Tab Toggles (AFTER ESP functions)
+VisualsTab:CreateToggle({ Name = "Enable ESP", CurrentValue = config.ESPEnabled, Callback = function(v) config.ESPEnabled = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox, Callback = function(v) config.ESP_ShowBox = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v UpdateESPVisibility() end })
+
+
+--// R6 limbs
+local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
 --// FUNCTIONS
 
