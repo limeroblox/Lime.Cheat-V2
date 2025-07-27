@@ -62,7 +62,7 @@ local UserInputService 	= game:GetService("UserInputService")
 --// Vars
 local LocalPlayer 	= Players.LocalPlayer
 local Camera 		= workspace.CurrentCamera
-
+local mouse = player:GetMouse()
 
 
 --// Remotes
