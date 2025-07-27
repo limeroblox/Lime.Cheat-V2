@@ -504,7 +504,7 @@ local function ESP(plr)
 end
 
 -- Update visibility for all ESP objects
-function UpdateESPVisibility()
+local function UpdateESPVisibility()
     for _, lib in pairs(ESPObjects) do
         if config.ESPEnabled then
             SafeSetVisibility({lib.box, lib.boxOutline}, config.ESP_ShowBox)
