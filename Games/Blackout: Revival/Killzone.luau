@@ -59,6 +59,21 @@ local Settings = {
     Tracer_Origin = "Bottom"
 }
 
+--//Function to define esp
+local function UpdateESPVisibility()
+    for _, lib in pairs(ESPObjects) do
+        if config.ESPEnabled then
+            SafeSetVisibility({lib.box, lib.boxOutline}, config.ESP_ShowBox)
+            SafeSetVisibility({lib.tracer, lib.tracerOutline}, config.ESP_ShowTracer)
+            SafeSetVisibility({lib.health, lib.healthOutline}, config.ESP_ShowHealth)
+            SafeSetVisibility({lib.name, lib.distance}, config.ESP_ShowName)
+        else
+            Visibility(false, lib)
+        end
+    end
+end
+
+
 local Tab 		= Window:CreateTab("KillAura", 4483362458)
 local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
 local VisualsTab 	= Window:CreateTab("Visuals", 4483362458)
@@ -80,12 +95,17 @@ Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
 
---// Visuals Tab Toggles (AFTER ESP functions)
+--// Visuals 
 VisualsTab:CreateToggle({ Name = "Enable ESP", CurrentValue = config.ESPEnabled, Callback = function(v) config.ESPEnabled = v UpdateESPVisibility() end })
 VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox, Callback = function(v) config.ESP_ShowBox = v UpdateESPVisibility() end })
 VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v UpdateESPVisibility() end })
 VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v UpdateESPVisibility() end })
 VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v UpdateESPVisibility() end })
+VisualsTab:CreateSlider({ Name = "Tracer Thickness", Range = {1, 5}, Increment = 0.5, CurrentValue = Settings.Tracer_Thickness, Callback = function(v) Settings.Tracer_Thickness = v end })
+VisualsTab:CreateSlider({ Name = "Box Thickness", Range = {1, 5}, Increment = 0.5, CurrentValue = Settings.Box_Thickness, Callback = function(v) Settings.Box_Thickness = v end })
+VisualsTab:CreateDropdown({ Name = "Tracer Origin", Options = {"Bottom", "Middle"}, CurrentOption = Settings.Tracer_Origin, Callback = function(v) Settings.Tracer_Origin = v end })
+VisualsTab:CreateColorPicker({ Name = "Tracer Color", Color = Settings.Tracer_Color, Flag = "TracerColor", Callback = function(Value) Settings.Tracer_Color = Value end })
+VisualsTab:CreateColorPicker({ Name = "Box Color", Color = Settings.Box_Color, Flag = "BoxColor", Callback = function(Value) Settings.Box_Color = Value end })
 
 
 --// R6 limbs
@@ -501,20 +521,6 @@ local function ESP(plr)
         SafeSetVisibility({lib.health, lib.healthOutline}, config.ESP_ShowHealth)
         SafeSetVisibility({lib.name, lib.distance}, config.ESP_ShowName)
     end)
-end
-
--- Update visibility for all ESP objects
-local function UpdateESPVisibility()
-    for _, lib in pairs(ESPObjects) do
-        if config.ESPEnabled then
-            SafeSetVisibility({lib.box, lib.boxOutline}, config.ESP_ShowBox)
-            SafeSetVisibility({lib.tracer, lib.tracerOutline}, config.ESP_ShowTracer)
-            SafeSetVisibility({lib.health, lib.healthOutline}, config.ESP_ShowHealth)
-            SafeSetVisibility({lib.name, lib.distance}, config.ESP_ShowName)
-        else
-            Visibility(false, lib)
-        end
-    end
 end
 
 -- Hook into players
