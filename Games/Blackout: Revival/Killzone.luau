@@ -448,7 +448,7 @@ local function ESP(plr)
             return
         end
 
-        local head = camera:WorldToViewportPoint(plr.Character.Head.Position)
+        local head = Camera:WorldToViewportPoint(plr.Character.Head.Position)
         local DistanceY = math.clamp((Vector2.new(head.X, head.Y) - Vector2.new(HumPos.X, HumPos.Y)).magnitude, 2, math.huge)
 
         -- BOX
@@ -467,7 +467,7 @@ local function ESP(plr)
                 library.tracer.From = Vector2.new(mouse.X, mouse.Y + 36)
                 library.blacktracer.From = Vector2.new(mouse.X, mouse.Y + 36)
             elseif Settings.Tracer_Origin == "Middle" then
-                local center = camera.ViewportSize * 0.5
+                local center = Camera.ViewportSize * 0.5
                 library.tracer.From = center
                 library.blacktracer.From = center
             else
@@ -503,7 +503,7 @@ local function ESP(plr)
         library.username.Position = Vector2.new(HumPos.X, HumPos.Y - DistanceY - 20)
         library.username.Size = math.clamp(DistanceY * 0.5, 13, 25)
 
-        local dist = math.floor((camera.CFrame.Position - plr.Character.HumanoidRootPart.Position).Magnitude)
+        local dist = math.floor((Camera.CFrame.Position - plr.Character.HumanoidRootPart.Position).Magnitude)
         library.distance.Text = tostring(dist) .. " studs"
         library.distance.Position = Vector2.new(HumPos.X, HumPos.Y + DistanceY + 10)
         library.distance.Size = math.clamp(DistanceY * 0.5, 13, 25)
