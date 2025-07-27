@@ -3,6 +3,32 @@
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({ Name = "Lime.Cheat V.2 | Blackout: Revival | Killzone/Zombies", Icon = 141272932, LoadingTitle = "Loading Script...", LoadingSubtitle = "By @lime.bat", ShowText = "Lime.Cheat V.2", Theme = "Default", ToggleUIKeybind = "K", DisableRayfieldPrompts = false, DisableBuildWarnings = false, ConfigurationSaving = { Enabled = true, FolderName = nil, FileName = "Lime.Cheat V.2 | Blackout: Revival Script" }, Discord = { Enabled = false, Invite = "noinvitelink", RememberJoins = true }, KeySystem = true, KeySettings = { Title = "Lime.Cheat", Subtitle = "Key System", Note = "To get the key, ask @lime.bat for the key", FileName = "Lime.Cheat Key Folder", SaveKey = true, GrabKeyFromSite = false, Key = {"Blackout"} } })
 
+--// Services
+local Players 		= game:GetService("Players")
+local RunService 	= game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService 	= game:GetService("TweenService")
+local UserInputService 	= game:GetService("UserInputService")
+
+--// Vars
+local LocalPlayer 	= Players.LocalPlayer
+local Camera 		= workspace.CurrentCamera
+local mouse 		= LocalPlayer:GetMouse()
+local UpdateESPVisibility = function() end
+
+
+--// Remotes
+local MeleeStorage 	= ReplicatedStorage:WaitForChild("MeleeStorage")
+local Events 		= MeleeStorage:WaitForChild("Events")
+local HitRemote 	= Events:WaitForChild("Hit")
+local SwingRemote 	= Events:WaitForChild("Swing")
+
+local GunEvents 	= ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Events")
+local GunShoot 		= GunEvents:WaitForChild("Shoot")
+local GunHit 		= GunEvents:WaitForChild("Hit")
+
+--// R6 limbs
+local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
 --// Config
 local config = {
@@ -64,35 +90,6 @@ VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox
 VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v UpdateESPVisibility() end })
 VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v UpdateESPVisibility() end })
 VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v UpdateESPVisibility() end })
-
-
---// Services
-local Players 		= game:GetService("Players")
-local RunService 	= game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService 	= game:GetService("TweenService")
-local UserInputService 	= game:GetService("UserInputService")
-
---// Vars
-local LocalPlayer 	= Players.LocalPlayer
-local Camera 		= workspace.CurrentCamera
-local mouse 		= LocalPlayer:GetMouse()
-local UpdateESPVisibility 
-
-
---// Remotes
-local MeleeStorage 	= ReplicatedStorage:WaitForChild("MeleeStorage")
-local Events 		= MeleeStorage:WaitForChild("Events")
-local HitRemote 	= Events:WaitForChild("Hit")
-local SwingRemote 	= Events:WaitForChild("Swing")
-
-local GunEvents 	= ReplicatedStorage:WaitForChild("GunStorage"):WaitForChild("Events")
-local GunShoot 		= GunEvents:WaitForChild("Shoot")
-local GunHit 		= GunEvents:WaitForChild("Hit")
-
---// R6 limbs
-local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
-
 
 --// FUNCTIONS
 
