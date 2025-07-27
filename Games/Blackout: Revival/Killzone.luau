@@ -415,7 +415,7 @@ local ESPObjects = {}
 
 --// ESP GENERATOR
 local function ESP(plr)
-    if plr == player then return end
+    if plr == LocalPlayer then return end
 
     local black = Color3.fromRGB(0, 0, 0)
     local library = {
@@ -433,7 +433,7 @@ local function ESP(plr)
 
     local connection
     connection = RunService.RenderStepped:Connect(function()
-        if not plr or not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") or not plr.Character:FindFirstChild("Humanoid") or plr.Character.Humanoid.Health <= 0 or not plr.Character:FindFirstChild("Head") then
+        if not plr or not plr.Character then
             Visibility(false, library)
             if not Players:FindFirstChild(plr.Name) then
                 connection:Disconnect()
@@ -442,13 +442,33 @@ local function ESP(plr)
             return
         end
 
-        local HumPos, OnScreen = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
-        if not OnScreen then
+        local humanoid = plr.Character:FindFirstChild("Humanoid")
+        local rootPart = plr.Character:FindFirstChild("HumanoidRootPart")
+        local headPart = plr.Character:FindFirstChild("Head")
+
+        if not humanoid or humanoid.Health <= 0 or not rootPart or not headPart then
             Visibility(false, library)
             return
         end
 
-        local head = Camera:WorldToViewportPoint(plr.Character.Head.Position)
+        local HumPos, OnScreen = nil, false
+        local success1, err1 = pcall(function()
+            HumPos, OnScreen = Camera:WorldToViewportPoint(rootPart.Position)
+        end)
+        if not success1 or not OnScreen then
+            Visibility(false, library)
+            return
+        end
+
+        local head, OnScreenHead = nil, false
+        local success2, err2 = pcall(function()
+            head, OnScreenHead = Camera:WorldToViewportPoint(headPart.Position)
+        end)
+        if not success2 or not OnScreenHead then
+            Visibility(false, library)
+            return
+        end
+
         local DistanceY = math.clamp((Vector2.new(head.X, head.Y) - Vector2.new(HumPos.X, HumPos.Y)).magnitude, 2, math.huge)
 
         -- BOX
@@ -471,7 +491,7 @@ local function ESP(plr)
                 library.tracer.From = center
                 library.blacktracer.From = center
             else
-                local bottom = Vector2.new(camera.ViewportSize.X * 0.5, camera.ViewportSize.Y)
+                local bottom = Vector2.new(Camera.ViewportSize.X * 0.5, Camera.ViewportSize.Y)
                 library.tracer.From = bottom
                 library.blacktracer.From = bottom
             end
@@ -486,7 +506,7 @@ local function ESP(plr)
 
         -- HEALTHBAR
         local d = (Vector2.new(HumPos.X - DistanceY, HumPos.Y - DistanceY * 2) - Vector2.new(HumPos.X - DistanceY, HumPos.Y + DistanceY * 2)).magnitude
-        local hp_ratio = plr.Character.Humanoid.Health / plr.Character.Humanoid.MaxHealth
+        local hp_ratio = humanoid.Health / humanoid.MaxHealth
         local healthoffset = hp_ratio * d
 
         library.greenhealth.From = Vector2.new(HumPos.X - DistanceY - 4, HumPos.Y + DistanceY * 2)
@@ -503,7 +523,7 @@ local function ESP(plr)
         library.username.Position = Vector2.new(HumPos.X, HumPos.Y - DistanceY - 20)
         library.username.Size = math.clamp(DistanceY * 0.5, 13, 25)
 
-        local dist = math.floor((Camera.CFrame.Position - plr.Character.HumanoidRootPart.Position).Magnitude)
+        local dist = math.floor((Camera.CFrame.Position - rootPart.Position).Magnitude)
         library.distance.Text = tostring(dist) .. " studs"
         library.distance.Position = Vector2.new(HumPos.X, HumPos.Y + DistanceY + 10)
         library.distance.Size = math.clamp(DistanceY * 0.5, 13, 25)
