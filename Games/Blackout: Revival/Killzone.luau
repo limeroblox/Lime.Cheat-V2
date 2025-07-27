@@ -81,18 +81,12 @@ Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
 
---// Visuals 
-VisualsTab:CreateToggle({ Name = "Enable ESP", CurrentValue = config.ESPEnabled, Callback = function(v) config.ESPEnabled = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox, Callback = function(v) config.ESP_ShowBox = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v UpdateESPVisibility() end })
-VisualsTab:CreateSlider({ Name = "Tracer Thickness", Range = {1, 5}, Increment = 0.5, CurrentValue = Settings.Tracer_Thickness, Callback = function(v) Settings.Tracer_Thickness = v end })
-VisualsTab:CreateSlider({ Name = "Box Thickness", Range = {1, 5}, Increment = 0.5, CurrentValue = Settings.Box_Thickness, Callback = function(v) Settings.Box_Thickness = v end })
-VisualsTab:CreateDropdown({ Name = "Tracer Origin", Options = {"Bottom", "Middle"}, CurrentOption = Settings.Tracer_Origin, Callback = function(v) Settings.Tracer_Origin = v end })
-VisualsTab:CreateColorPicker({ Name = "Tracer Color", Color = Settings.Tracer_Color, Flag = "TracerColor", Callback = function(Value) Settings.Tracer_Color = Value end })
-VisualsTab:CreateColorPicker({ Name = "Box Color", Color = Settings.Box_Color, Flag = "BoxColor", Callback = function(Value) Settings.Box_Color = Value end })
-
+--// Visuals toggles
+VisualsTab:CreateToggle({ Name = "Enable ESP", CurrentValue = config.ESPEnabled, Callback = function(v) config.ESPEnabled = v if UpdateESPVisibility then UpdateESPVisibility() end end })
+VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox, Callback = function(v) config.ESP_ShowBox = v if UpdateESPVisibility then UpdateESPVisibility() end end })
+VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v if UpdateESPVisibility then UpdateESPVisibility() end end })
+VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v if UpdateESPVisibility then UpdateESPVisibility() end end })
+VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v if UpdateESPVisibility then UpdateESPVisibility() end end })
 
 --// R6 limbs
 local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
