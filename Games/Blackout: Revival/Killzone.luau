@@ -442,7 +442,7 @@ local function ESP(plr)
             return
         end
 
-        local HumPos, OnScreen = camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
+        local HumPos, OnScreen = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
         if not OnScreen then
             Visibility(false, library)
             return
