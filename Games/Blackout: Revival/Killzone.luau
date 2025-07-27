@@ -15,7 +15,6 @@ local UserInputService 	= game:GetService("UserInputService")
 local LocalPlayer 	= Players.LocalPlayer
 local Camera 		= workspace.CurrentCamera
 local mouse 		= LocalPlayer:GetMouse()
-local ESPObjects 	= {}
 
 
 --// Remotes
@@ -59,20 +58,6 @@ local Settings = {
     Tracer_FollowMouse = false,
     Tracer_Origin = "Bottom"
 }
-
---//Function to define esp
-local function UpdateESPVisibility()
-    for _, lib in pairs(ESPObjects) do
-        if config.ESPEnabled then
-            SafeSetVisibility({lib.box, lib.boxOutline}, config.ESP_ShowBox)
-            SafeSetVisibility({lib.tracer, lib.tracerOutline}, config.ESP_ShowTracer)
-            SafeSetVisibility({lib.health, lib.healthOutline}, config.ESP_ShowHealth)
-            SafeSetVisibility({lib.name, lib.distance}, config.ESP_ShowName)
-        else
-            Visibility(false, lib)
-        end
-    end
-end
 
 
 local Tab 		= Window:CreateTab("KillAura", 4483362458)
@@ -382,28 +367,24 @@ RunService:BindToRenderStep("AimbotLock", Enum.RenderPriority.Camera.Value + 1, 
 	end
 end)
 
+local ESPObjects = {}
+
 -- Utility Functions
-local function NewLine(thickness, color)
+local function NewLine()
     local line = Drawing.new("Line")
-    line.Thickness = thickness
-    line.Color = color
     line.Visible = false
     return line
 end
 
-local function NewQuad(thickness, color)
+local function NewQuad()
     local quad = Drawing.new("Quad")
-    quad.Thickness = thickness
-    quad.Color = color
     quad.Filled = false
     quad.Visible = false
     return quad
 end
 
-local function NewText(size, color)
+local function NewText()
     local text = Drawing.new("Text")
-    text.Size = size
-    text.Color = color
     text.Center = true
     text.Outline = true
     text.Visible = false
@@ -426,14 +407,14 @@ local function ESP(plr)
     if plr == LocalPlayer then return end
 
     local lib = {
-        tracerOutline = NewLine(Settings.Tracer_Thickness * 2, Color3.new(0, 0, 0)),
-        tracer = NewLine(Settings.Tracer_Thickness, Settings.Tracer_Color),
-        boxOutline = NewQuad(Settings.Box_Thickness * 2, Color3.new(0, 0, 0)),
-        box = NewQuad(Settings.Box_Thickness, Settings.Box_Color),
-        healthOutline = NewLine(3, Color3.new(0, 0, 0)),
-        health = NewLine(1.5, Color3.new(0, 255, 0)),
-        name = NewText(16, Color3.fromRGB(255, 255, 255)),
-        distance = NewText(16, Color3.fromRGB(255, 255, 255))
+        tracerOutline = NewLine(),
+        tracer = NewLine(),
+        boxOutline = NewQuad(),
+        box = NewQuad(),
+        healthOutline = NewLine(),
+        health = NewLine(),
+        name = NewText(),
+        distance = NewText()
     }
 
     ESPObjects[plr] = lib
@@ -445,7 +426,7 @@ local function ESP(plr)
             return
         end
 
-        if not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") or not plr.Character:FindFirstChild("Humanoid") or plr.Character.Humanoid.Health <= 0 then
+        if not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") then
             Visibility(false, lib)
             if not Players:FindFirstChild(plr.Name) then
                 conn:Disconnect()
@@ -455,8 +436,9 @@ local function ESP(plr)
         end
 
         local root = plr.Character.HumanoidRootPart
-        local head = plr.Character:FindFirstChild("Head")
-        local humanoid = plr.Character.Humanoid
+        local head = plr.Character:FindFirstChild("Head") or root
+        local humanoid = plr.Character:FindFirstChild("Humanoid")
+        if not humanoid then return end
 
         local HumPos, onScreen = Camera:WorldToViewportPoint(root.Position)
         if not onScreen then
@@ -467,7 +449,18 @@ local function ESP(plr)
         local headPos = Camera:WorldToViewportPoint(head.Position)
         local size = math.clamp((Vector2.new(headPos.X, headPos.Y) - Vector2.new(HumPos.X, HumPos.Y)).Magnitude, 2, 9999)
 
-        -- Box
+        -- Dynamic colors and thickness
+        lib.box.Color = Settings.Box_Color
+        lib.boxOutline.Color = Color3.new(0, 0, 0)
+        lib.box.Thickness = Settings.Box_Thickness
+        lib.boxOutline.Thickness = Settings.Box_Thickness * 2
+
+        lib.tracer.Color = Settings.Tracer_Color
+        lib.tracer.Thickness = Settings.Tracer_Thickness
+        lib.tracerOutline.Color = Color3.new(0, 0, 0)
+        lib.tracerOutline.Thickness = Settings.Tracer_Thickness * 2
+
+        -- Box points
         lib.box.PointA = Vector2.new(HumPos.X + size, HumPos.Y - size * 2)
         lib.box.PointB = Vector2.new(HumPos.X - size, HumPos.Y - size * 2)
         lib.box.PointC = Vector2.new(HumPos.X - size, HumPos.Y + size * 2)
@@ -497,21 +490,25 @@ local function ESP(plr)
 
         lib.healthOutline.From = Vector2.new(HumPos.X - size - 4, HumPos.Y + size * 2)
         lib.healthOutline.To = Vector2.new(HumPos.X - size - 4, HumPos.Y - size * 2)
+        lib.healthOutline.Color = Color3.new(0, 0, 0)
+        lib.healthOutline.Thickness = 3
 
         lib.health.From = Vector2.new(HumPos.X - size - 4, HumPos.Y + size * 2)
         lib.health.To = Vector2.new(HumPos.X - size - 4, HumPos.Y + size * 2 - hpOffset)
-
         lib.health.Color = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), ratio)
+        lib.health.Thickness = 1.5
 
         -- Name & distance
         lib.name.Text = plr.DisplayName
         lib.name.Position = Vector2.new(HumPos.X, HumPos.Y - size - 20)
         lib.name.Size = math.clamp(size * 0.5, 13, 25)
+        lib.name.Color = Color3.fromRGB(255, 255, 255)
 
         local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
         lib.distance.Text = dist .. " studs"
         lib.distance.Position = Vector2.new(HumPos.X, HumPos.Y + size + 10)
         lib.distance.Size = lib.name.Size
+        lib.distance.Color = Color3.fromRGB(255, 255, 255)
 
         -- Apply visibility based on toggles
         SafeSetVisibility({lib.box, lib.boxOutline}, config.ESP_ShowBox)
@@ -521,11 +518,29 @@ local function ESP(plr)
     end)
 end
 
--- Hook into players
+local function UpdateESPVisibility()
+    for _, lib in pairs(ESPObjects) do
+        if config.ESPEnabled then
+            SafeSetVisibility({lib.box, lib.boxOutline}, config.ESP_ShowBox)
+            SafeSetVisibility({lib.tracer, lib.tracerOutline}, config.ESP_ShowTracer)
+            SafeSetVisibility({lib.health, lib.healthOutline}, config.ESP_ShowHealth)
+            SafeSetVisibility({lib.name, lib.distance}, config.ESP_ShowName)
+        else
+            Visibility(false, lib)
+        end
+    end
+end
+
+-- Hook players
 for _, plr in ipairs(Players:GetPlayers()) do
     ESP(plr)
 end
 Players.PlayerAdded:Connect(ESP)
+Players.PlayerRemoving:Connect(function(plr)
+    if ESPObjects[plr] then
+        ESPObjects[plr] = nil
+    end
+end)
 
 --//Load Configs
 Rayfield:LoadConfiguration()
