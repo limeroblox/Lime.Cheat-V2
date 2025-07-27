@@ -2,6 +2,8 @@
 --// UI
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({ Name = "Lime.Cheat V.2 | Blackout: Revival | Killzone/Zombies", Icon = 141272932, LoadingTitle = "Loading Script...", LoadingSubtitle = "By @lime.bat", ShowText = "Lime.Cheat V.2", Theme = "Default", ToggleUIKeybind = "K", DisableRayfieldPrompts = false, DisableBuildWarnings = false, ConfigurationSaving = { Enabled = true, FolderName = nil, FileName = "Lime.Cheat V.2 | Blackout: Revival Script" }, Discord = { Enabled = false, Invite = "noinvitelink", RememberJoins = true }, KeySystem = true, KeySettings = { Title = "Lime.Cheat", Subtitle = "Key System", Note = "To get the key, ask @lime.bat for the key", FileName = "Lime.Cheat Key Folder", SaveKey = true, GrabKeyFromSite = false, Key = {"Blackout"} } })
+
+
 --// Config
 local config = {
     Enabled         = false,
@@ -22,6 +24,17 @@ local config = {
     ESP_ShowTracer = true,
     ESP_ShowHealth = true,
     ESP_ShowName = true
+}
+
+--// Settings for config, ig :P
+local Settings = {
+    Tracer_Thickness = 1,
+    Tracer_Color = Color3.fromRGB(255,255,255),
+    Box_Thickness = 1,
+    Box_Color = Color3.fromRGB(255,255,255),
+    Tracers = true,
+    Tracer_FollowMouse = false,
+    Tracer_Origin = "Bottom"
 }
 
 local Tab 		= Window:CreateTab("KillAura", 4483362458)
@@ -45,12 +58,13 @@ Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1
 Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
 
 
---// Visuals
-VisualsTab:CreateToggle({ Name = "Enable ESP", CurrentValue = config.ESPEnabled, Callback = function(v) config.ESPEnabled = v; UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox, Callback = function(v) config.ESP_ShowBox = v; UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v; UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v; UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v; UpdateESPVisibility() end })
+--// Visuals Tab Toggles (AFTER ESP functions)
+VisualsTab:CreateToggle({ Name = "Enable ESP", CurrentValue = config.ESPEnabled, Callback = function(v) config.ESPEnabled = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox, Callback = function(v) config.ESP_ShowBox = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v UpdateESPVisibility() end })
+
 
 --// Services
 local Players 		= game:GetService("Players")
@@ -62,7 +76,8 @@ local UserInputService 	= game:GetService("UserInputService")
 --// Vars
 local LocalPlayer 	= Players.LocalPlayer
 local Camera 		= workspace.CurrentCamera
-local mouse = player:GetMouse()
+local mouse 		= LocalPlayer:GetMouse()
+local UpdateESPVisibility 
 
 
 --// Remotes
@@ -77,6 +92,10 @@ local GunHit 		= GunEvents:WaitForChild("Hit")
 
 --// R6 limbs
 local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
+
+
+--// FUNCTIONS
+
 
 --// Fire Melee Hit
 local function fireHit(char)
@@ -504,7 +523,7 @@ local function ESP(plr)
     end)
 end
 
-local function UpdateESPVisibility()
+UpdateESPVisibility = function()
     for _, lib in pairs(ESPObjects) do
         if config.ESPEnabled then
             SafeSetVisibility({lib.box, lib.black}, config.ESP_ShowBox)
