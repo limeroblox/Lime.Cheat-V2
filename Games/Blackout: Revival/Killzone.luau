@@ -3,6 +3,34 @@
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({ Name = "Lime.Cheat V.2 | Blackout: Revival | Killzone/Zombies", Icon = 141272932, LoadingTitle = "Loading Script...", LoadingSubtitle = "By @lime.bat", ShowText = "Lime.Cheat V.2", Theme = "Default", ToggleUIKeybind = "K", DisableRayfieldPrompts = false, DisableBuildWarnings = false, ConfigurationSaving = { Enabled = true, FolderName = nil, FileName = "Lime.Cheat V.2 | Blackout: Revival Script" }, Discord = { Enabled = false, Invite = "noinvitelink", RememberJoins = true }, KeySystem = true, KeySettings = { Title = "Lime.Cheat", Subtitle = "Key System", Note = "To get the key, ask @lime.bat for the key", FileName = "Lime.Cheat Key Folder", SaveKey = true, GrabKeyFromSite = false, Key = {"Blackout"} } })
 
+local Tab 		= Window:CreateTab("KillAura", 4483362458)
+local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
+local VisualsTab 	= Window:CreateTab("Visuals", 4483362458)
+
+--// Aimbot
+AimbotTab:CreateToggle({ Name = "Enable", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
+AimbotTab:CreateToggle({ Name = "Include NPCs", CurrentValue = false, Callback = function(v) config.NPC_Aimbot = v end })
+AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = "Head", Callback = function(v) config.AimPart = v end })
+AimbotTab:CreateSlider({ Name = "Lockage", Range = {0.1, 1}, Increment = 0.05, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Smoothness = v end })
+AimbotTab:CreateToggle({ Name = "Wall Check", CurrentValue = true, Callback = function(v) config.WallCheck = v end })
+
+
+--// Killaura
+Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
+Tab:CreateToggle({ Name = "KillAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_KillAura = v end })
+Tab:CreateToggle({ Name = "GunAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_GunAura = v end })
+Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix = " studs", CurrentValue = 15, Callback = function(v) config.Range = v end })
+Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
+Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
+
+
+--// Visuals Tab Toggles (AFTER ESP functions)
+VisualsTab:CreateToggle({ Name = "Enable ESP", CurrentValue = config.ESPEnabled, Callback = function(v) config.ESPEnabled = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox, Callback = function(v) config.ESP_ShowBox = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v UpdateESPVisibility() end })
+VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v UpdateESPVisibility() end })
+
 --// Services
 local Players 		= game:GetService("Players")
 local RunService 	= game:GetService("RunService")
@@ -14,7 +42,6 @@ local UserInputService 	= game:GetService("UserInputService")
 local LocalPlayer 	= Players.LocalPlayer
 local Camera 		= workspace.CurrentCamera
 local mouse 		= LocalPlayer:GetMouse()
-local UpdateESPVisibility = function() end
 
 
 --// Remotes
@@ -52,7 +79,6 @@ local config = {
     ESP_ShowName = true
 }
 
---// Settings for config, ig :P
 local Settings = {
     Tracer_Thickness = 1,
     Tracer_Color = Color3.fromRGB(255,255,255),
@@ -63,36 +89,7 @@ local Settings = {
     Tracer_Origin = "Bottom"
 }
 
-local Tab 		= Window:CreateTab("KillAura", 4483362458)
-local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
-local VisualsTab 	= Window:CreateTab("Visuals", 4483362458)
-
---// Aimbot
-AimbotTab:CreateToggle({ Name = "Enable", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
-AimbotTab:CreateToggle({ Name = "Include NPCs", CurrentValue = false, Callback = function(v) config.NPC_Aimbot = v end })
-AimbotTab:CreateDropdown({ Name = "Target Part", Options = {"Head", "Torso"}, CurrentOption = "Head", Callback = function(v) config.AimPart = v end })
-AimbotTab:CreateSlider({ Name = "Lockage", Range = {0.1, 1}, Increment = 0.05, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Smoothness = v end })
-AimbotTab:CreateToggle({ Name = "Wall Check", CurrentValue = true, Callback = function(v) config.WallCheck = v end })
-
-
---// Killaura
-Tab:CreateToggle({ Name = "Enable KillAura (Players)", CurrentValue = false, Callback = function(v) config.Enabled = v end })
-Tab:CreateToggle({ Name = "KillAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_KillAura = v end })
-Tab:CreateToggle({ Name = "GunAura (All NPCs)", CurrentValue = false, Callback = function(v) config.NPC_GunAura = v end })
-Tab:CreateSlider({ Name = "Aura Range", Range = {1, 30}, Increment = 1, Suffix = " studs", CurrentValue = 15, Callback = function(v) config.Range = v end })
-Tab:CreateSlider({ Name = "Head Hit Chance (%)", Range = {0, 100}, Increment = 1, Suffix = "%", CurrentValue = 20, Callback = function(v) config.HeadChance = v end })
-Tab:CreateSlider({ Name = "KillAura Delay (seconds)", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.1, Callback = function(v) config.Delay = v end })
-
-
---// Visuals Tab Toggles (AFTER ESP functions)
-VisualsTab:CreateToggle({ Name = "Enable ESP", CurrentValue = config.ESPEnabled, Callback = function(v) config.ESPEnabled = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox, Callback = function(v) config.ESP_ShowBox = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v UpdateESPVisibility() end })
-VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v UpdateESPVisibility() end })
-
 --// FUNCTIONS
-
 
 --// Fire Melee Hit
 local function fireHit(char)
@@ -362,198 +359,163 @@ RunService:BindToRenderStep("AimbotLock", Enum.RenderPriority.Camera.Value + 1, 
 	end
 end)
 
+--// ESP SYSTEM
+local ESPObjects = {}
 
---// UTILITY
-local function NewQuad(thickness, color)
-    local quad = Drawing.new("Quad")
-    quad.Visible = false
-    quad.Color = color
-    quad.Filled = false
-    quad.Thickness = thickness
-    quad.Transparency = 1
-    return quad
-end
-
+-- Utility Functions
 local function NewLine(thickness, color)
     local line = Drawing.new("Line")
-    line.Visible = false
-    line.Color = color
     line.Thickness = thickness
-    line.Transparency = 1
+    line.Color = color
+    line.Visible = false
     return line
 end
 
-local function NewText(size, color, font)
+local function NewQuad(thickness, color)
+    local quad = Drawing.new("Quad")
+    quad.Thickness = thickness
+    quad.Color = color
+    quad.Filled = false
+    quad.Visible = false
+    return quad
+end
+
+local function NewText(size, color)
     local text = Drawing.new("Text")
-    text.Visible = false
     text.Size = size
     text.Color = color
-    text.Font = font or Drawing.Fonts.UI
-    text.Text = ""
     text.Center = true
     text.Outline = true
-    text.OutlineColor = Color3.fromRGB(0, 0, 0)
+    text.Visible = false
     return text
 end
 
-local function Visibility(state, lib)
-    for _, x in pairs(lib) do
-        x.Visible = state
+local function Visibility(state, library)
+    for _, obj in pairs(library) do
+        obj.Visible = state
     end
 end
 
-local function SafeSetVisibility(elements, condition)
-    for _, element in ipairs(elements) do
-        if element then
-            element.Visible = condition
-        end
+local function SafeSetVisibility(objects, state)
+    for _, obj in ipairs(objects) do
+        if obj then obj.Visible = state end
     end
 end
 
---// TRACKED ESP OBJECTS
-local ESPObjects = {}
-
---// ESP GENERATOR
 local function ESP(plr)
     if plr == LocalPlayer then return end
 
-    local black = Color3.fromRGB(0, 0, 0)
-    local library = {
-        blacktracer = NewLine(Settings.Tracer_Thickness * 2, black),
+    local lib = {
+        tracerOutline = NewLine(Settings.Tracer_Thickness * 2, Color3.new(0, 0, 0)),
         tracer = NewLine(Settings.Tracer_Thickness, Settings.Tracer_Color),
-        black = NewQuad(Settings.Box_Thickness * 2, black),
+        boxOutline = NewQuad(Settings.Box_Thickness * 2, Color3.new(0, 0, 0)),
         box = NewQuad(Settings.Box_Thickness, Settings.Box_Color),
-        healthbar = NewLine(3, black),
-        greenhealth = NewLine(1.5, black),
-        username = NewText(16, Color3.fromRGB(255, 255, 255)),
+        healthOutline = NewLine(3, Color3.new(0, 0, 0)),
+        health = NewLine(1.5, Color3.new(0, 255, 0)),
+        name = NewText(16, Color3.fromRGB(255, 255, 255)),
         distance = NewText(16, Color3.fromRGB(255, 255, 255))
     }
 
-    ESPObjects[plr] = library
+    ESPObjects[plr] = lib
 
-    local connection
-    connection = RunService.RenderStepped:Connect(function()
-        if not plr or not plr.Character then
-            Visibility(false, library)
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        if not config.ESPEnabled then
+            Visibility(false, lib)
+            return
+        end
+
+        if not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") or not plr.Character:FindFirstChild("Humanoid") or plr.Character.Humanoid.Health <= 0 then
+            Visibility(false, lib)
             if not Players:FindFirstChild(plr.Name) then
-                connection:Disconnect()
+                conn:Disconnect()
                 ESPObjects[plr] = nil
             end
             return
         end
 
-        local humanoid = plr.Character:FindFirstChild("Humanoid")
-        local rootPart = plr.Character:FindFirstChild("HumanoidRootPart")
-        local headPart = plr.Character:FindFirstChild("Head")
+        local root = plr.Character.HumanoidRootPart
+        local head = plr.Character:FindFirstChild("Head")
+        local humanoid = plr.Character.Humanoid
 
-        if not humanoid or humanoid.Health <= 0 or not rootPart or not headPart then
-            Visibility(false, library)
+        local HumPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+        if not onScreen then
+            Visibility(false, lib)
             return
         end
 
-        local HumPos, OnScreen = nil, false
-        local success1, err1 = pcall(function()
-            HumPos, OnScreen = Camera:WorldToViewportPoint(rootPart.Position)
-        end)
-        if not success1 or not OnScreen then
-            Visibility(false, library)
-            return
-        end
+        local headPos = Camera:WorldToViewportPoint(head.Position)
+        local size = math.clamp((Vector2.new(headPos.X, headPos.Y) - Vector2.new(HumPos.X, HumPos.Y)).Magnitude, 2, 9999)
 
-        local head, OnScreenHead = nil, false
-        local success2, err2 = pcall(function()
-            head, OnScreenHead = Camera:WorldToViewportPoint(headPart.Position)
-        end)
-        if not success2 or not OnScreenHead then
-            Visibility(false, library)
-            return
-        end
+        -- Box
+        lib.box.PointA = Vector2.new(HumPos.X + size, HumPos.Y - size * 2)
+        lib.box.PointB = Vector2.new(HumPos.X - size, HumPos.Y - size * 2)
+        lib.box.PointC = Vector2.new(HumPos.X - size, HumPos.Y + size * 2)
+        lib.box.PointD = Vector2.new(HumPos.X + size, HumPos.Y + size * 2)
 
-        local DistanceY = math.clamp((Vector2.new(head.X, head.Y) - Vector2.new(HumPos.X, HumPos.Y)).magnitude, 2, math.huge)
+        lib.boxOutline.PointA, lib.boxOutline.PointB = lib.box.PointA, lib.box.PointB
+        lib.boxOutline.PointC, lib.boxOutline.PointD = lib.box.PointC, lib.box.PointD
 
-        -- BOX
-        local function Size(item)
-            item.PointA = Vector2.new(HumPos.X + DistanceY, HumPos.Y - DistanceY * 2)
-            item.PointB = Vector2.new(HumPos.X - DistanceY, HumPos.Y - DistanceY * 2)
-            item.PointC = Vector2.new(HumPos.X - DistanceY, HumPos.Y + DistanceY * 2)
-            item.PointD = Vector2.new(HumPos.X + DistanceY, HumPos.Y + DistanceY * 2)
-        end
-        Size(library.box)
-        Size(library.black)
-
-        -- TRACERS
+        -- Tracer
         if Settings.Tracers then
+            local origin
             if Settings.Tracer_FollowMouse then
-                library.tracer.From = Vector2.new(mouse.X, mouse.Y + 36)
-                library.blacktracer.From = Vector2.new(mouse.X, mouse.Y + 36)
+                origin = Vector2.new(mouse.X, mouse.Y + 36)
             elseif Settings.Tracer_Origin == "Middle" then
-                local center = Camera.ViewportSize * 0.5
-                library.tracer.From = center
-                library.blacktracer.From = center
+                origin = Camera.ViewportSize * 0.5
             else
-                local bottom = Vector2.new(Camera.ViewportSize.X * 0.5, Camera.ViewportSize.Y)
-                library.tracer.From = bottom
-                library.blacktracer.From = bottom
+                origin = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
             end
-            library.tracer.To = Vector2.new(HumPos.X, HumPos.Y + DistanceY * 2)
-            library.blacktracer.To = Vector2.new(HumPos.X, HumPos.Y + DistanceY * 2)
-        else
-            library.tracer.From = Vector2.new(0, 0)
-            library.tracer.To = Vector2.new(0, 0)
-            library.blacktracer.From = Vector2.new(0, 0)
-            library.blacktracer.To = Vector2.new(0, 0)
+            lib.tracer.From, lib.tracer.To = origin, Vector2.new(HumPos.X, HumPos.Y + size * 2)
+            lib.tracerOutline.From, lib.tracerOutline.To = lib.tracer.From, lib.tracer.To
         end
 
-        -- HEALTHBAR
-        local d = (Vector2.new(HumPos.X - DistanceY, HumPos.Y - DistanceY * 2) - Vector2.new(HumPos.X - DistanceY, HumPos.Y + DistanceY * 2)).magnitude
-        local hp_ratio = humanoid.Health / humanoid.MaxHealth
-        local healthoffset = hp_ratio * d
+        -- Health bar
+        local fullHeight = (Vector2.new(HumPos.X - size, HumPos.Y - size * 2) - Vector2.new(HumPos.X - size, HumPos.Y + size * 2)).Magnitude
+        local ratio = humanoid.Health / humanoid.MaxHealth
+        local hpOffset = ratio * fullHeight
 
-        library.greenhealth.From = Vector2.new(HumPos.X - DistanceY - 4, HumPos.Y + DistanceY * 2)
-        library.greenhealth.To = Vector2.new(HumPos.X - DistanceY - 4, HumPos.Y + DistanceY * 2 - healthoffset)
-        library.healthbar.From = Vector2.new(HumPos.X - DistanceY - 4, HumPos.Y + DistanceY * 2)
-        library.healthbar.To = Vector2.new(HumPos.X - DistanceY - 4, HumPos.Y - DistanceY * 2)
+        lib.healthOutline.From = Vector2.new(HumPos.X - size - 4, HumPos.Y + size * 2)
+        lib.healthOutline.To = Vector2.new(HumPos.X - size - 4, HumPos.Y - size * 2)
 
-        local green = Color3.fromRGB(0, 255, 0)
-        local red = Color3.fromRGB(255, 0, 0)
-        library.greenhealth.Color = red:lerp(green, hp_ratio)
+        lib.health.From = Vector2.new(HumPos.X - size - 4, HumPos.Y + size * 2)
+        lib.health.To = Vector2.new(HumPos.X - size - 4, HumPos.Y + size * 2 - hpOffset)
 
-        -- NAME & DISTANCE
-        library.username.Text = plr.DisplayName
-        library.username.Position = Vector2.new(HumPos.X, HumPos.Y - DistanceY - 20)
-        library.username.Size = math.clamp(DistanceY * 0.5, 13, 25)
+        lib.health.Color = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), ratio)
 
-        local dist = math.floor((Camera.CFrame.Position - rootPart.Position).Magnitude)
-        library.distance.Text = tostring(dist) .. " studs"
-        library.distance.Position = Vector2.new(HumPos.X, HumPos.Y + DistanceY + 10)
-        library.distance.Size = math.clamp(DistanceY * 0.5, 13, 25)
+        -- Name & distance
+        lib.name.Text = plr.DisplayName
+        lib.name.Position = Vector2.new(HumPos.X, HumPos.Y - size - 20)
+        lib.name.Size = math.clamp(size * 0.5, 13, 25)
 
-        -- Apply Config Toggles
-        if config.ESPEnabled then
-            SafeSetVisibility({library.box, library.black}, config.ESP_ShowBox)
-            SafeSetVisibility({library.tracer, library.blacktracer}, config.ESP_ShowTracer)
-            SafeSetVisibility({library.greenhealth, library.healthbar}, config.ESP_ShowHealth)
-            SafeSetVisibility({library.username, library.distance}, config.ESP_ShowName)
-        else
-            Visibility(false, library)
-        end
+        local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
+        lib.distance.Text = dist .. " studs"
+        lib.distance.Position = Vector2.new(HumPos.X, HumPos.Y + size + 10)
+        lib.distance.Size = lib.name.Size
+
+        -- Apply visibility based on toggles
+        SafeSetVisibility({lib.box, lib.boxOutline}, config.ESP_ShowBox)
+        SafeSetVisibility({lib.tracer, lib.tracerOutline}, config.ESP_ShowTracer)
+        SafeSetVisibility({lib.health, lib.healthOutline}, config.ESP_ShowHealth)
+        SafeSetVisibility({lib.name, lib.distance}, config.ESP_ShowName)
     end)
 end
 
-UpdateESPVisibility = function()
+-- Update visibility for all ESP objects
+function UpdateESPVisibility()
     for _, lib in pairs(ESPObjects) do
         if config.ESPEnabled then
-            SafeSetVisibility({lib.box, lib.black}, config.ESP_ShowBox)
-            SafeSetVisibility({lib.tracer, lib.blacktracer}, config.ESP_ShowTracer)
-            SafeSetVisibility({lib.greenhealth, lib.healthbar}, config.ESP_ShowHealth)
-            SafeSetVisibility({lib.username, lib.distance}, config.ESP_ShowName)
+            SafeSetVisibility({lib.box, lib.boxOutline}, config.ESP_ShowBox)
+            SafeSetVisibility({lib.tracer, lib.tracerOutline}, config.ESP_ShowTracer)
+            SafeSetVisibility({lib.health, lib.healthOutline}, config.ESP_ShowHealth)
+            SafeSetVisibility({lib.name, lib.distance}, config.ESP_ShowName)
         else
             Visibility(false, lib)
         end
     end
 end
 
--- Hook Players
+-- Hook into players
 for _, plr in ipairs(Players:GetPlayers()) do
     ESP(plr)
 end
