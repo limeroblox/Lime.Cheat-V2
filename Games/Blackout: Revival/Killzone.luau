@@ -15,6 +15,7 @@ local UserInputService 	= game:GetService("UserInputService")
 local LocalPlayer 	= Players.LocalPlayer
 local Camera 		= workspace.CurrentCamera
 local mouse 		= LocalPlayer:GetMouse()
+local ESPObjects 	= {}
 
 
 --// Remotes
@@ -380,9 +381,6 @@ RunService:BindToRenderStep("AimbotLock", Enum.RenderPriority.Camera.Value + 1, 
 		lockedTarget = nil
 	end
 end)
-
---// ESP SYSTEM
-local ESPObjects = {}
 
 -- Utility Functions
 local function NewLine(thickness, color)
