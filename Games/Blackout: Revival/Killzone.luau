@@ -15,6 +15,8 @@ local UserInputService 	= game:GetService("UserInputService")
 local LocalPlayer 	= Players.LocalPlayer
 local Camera 		= workspace.CurrentCamera
 local mouse 		= LocalPlayer:GetMouse()
+local isMobile 		= UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
 
 
 --// Remotes
@@ -48,8 +50,9 @@ local config = {
     ESP_ShowHealth = true,
     ESP_ShowName = true,
 
-    flyEnabled = false,
-    noclipEnabled = false
+    FlyEnabled = false,
+    NoClipFlyEnabled = false
+
 }
 
 local Settings = {
@@ -93,9 +96,23 @@ VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_Sh
 VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v if UpdateESPVisibility then UpdateESPVisibility() end end })
 
 --// Movement
-MovementTab:CreateToggle({ Name = "Fly", CurrentValue = config.toggleFly, Callback = function(v) config.toggleFly = v handleFly() end })
-MovementTab:CreateToggle({ Name = "Noclip", CurrentValue = config.toggleNoclip, Callback = function(v) config.toggleNoclip = v handleNoclip() end })
+MovementTab:CreateToggle({
+	Name = "Fly",
+	CurrentValue = config.FlyEnabled,
+	Callback = function(v)
+		config.FlyEnabled = v
+		FLY(v, false)
+	end
+})
 
+MovementTab:CreateToggle({
+	Name = "NoClip Fly",
+	CurrentValue = config.NoClipFlyEnabled,
+	Callback = function(v)
+		config.NoClipFlyEnabled = v
+		FLY(v, true)
+	end
+})
 
 --// R6 limbs
 local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
@@ -521,73 +538,61 @@ local function ESP(plr)
     end)
 end
 
-local function UpdateESPVisibility()
-    for _, lib in pairs(ESPObjects) do
-        if config.ESPEnabled then
-            SafeSetVisibility({lib.box, lib.boxOutline}, config.ESP_ShowBox)
-            SafeSetVisibility({lib.tracer, lib.tracerOutline}, config.ESP_ShowTracer)
-            SafeSetVisibility({lib.health, lib.healthOutline}, config.ESP_ShowHealth)
-            SafeSetVisibility({lib.name, lib.distance}, config.ESP_ShowName)
-        else
-            Visibility(false, lib)
-        end
-    end
-end
-
--- Hook players
-for _, plr in ipairs(Players:GetPlayers()) do
-    ESP(plr)
-end
-Players.PlayerAdded:Connect(ESP)
-Players.PlayerRemoving:Connect(function(plr)
-    if ESPObjects[plr] then
-        ESPObjects[plr] = nil
-    end
-end)
-
-local noclipConn
-
-local function handleFly()
+local function FLY(enable, noclip)
 	local char = LocalPlayer.Character
-	if not char then return end
+	local root = getRoot(char)
+	if not char or not root then return end
 
-	local humanoid = char:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
+	local human = char:FindFirstChildOfClass("Humanoid")
+	if human then human.PlatformStand = enable end
 
-	if config.toggleFly then
-		humanoid.Sit = true
-		humanoid:ChangeState(Enum.HumanoidStateType.Flying)
-		task.wait(0.2)
-		humanoid.Sit = false
-	else
-		humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+	-- Cleanup on disable
+	if not enable then
+		if root:FindFirstChild("FlyVel") then root.FlyVel:Destroy() end
+		if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
+		if flyConn then flyConn:Disconnect() flyConn = nil end
+		return
 	end
-end
 
-local function handleNoclip()
-	local char = LocalPlayer.Character
-	if not char then return end
+	local bv = Instance.new("BodyVelocity")
+	bv.Name = "FlyVel"
+	bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+	bv.Velocity = Vector3.zero
+	bv.Parent = root
 
-	if config.toggleNoclip then
-		if noclipConn then noclipConn:Disconnect() end
-		noclipConn = RunService.Stepped:Connect(function()
+	local bg = Instance.new("BodyGyro")
+	bg.Name = "FlyGyro"
+	bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	bg.P = 1e5
+	bg.Parent = root
+
+	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local controlModule = isMobile and require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule")) or nil
+
+	flyConn = RunService.RenderStepped:Connect(function()
+		local cam = workspace.CurrentCamera
+		local moveVec
+
+		if isMobile and controlModule then
+			moveVec = cam.CFrame:VectorToWorldSpace(controlModule:GetMoveVector())
+		else
+			pcall(function()
+				local ctrl = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule")):GetControls()
+				moveVec = cam.CFrame:VectorToWorldSpace(ctrl:GetMoveVector())
+			end)
+		end
+
+		bv.Velocity = moveVec * 100
+		bg.CFrame = cam.CFrame
+
+		if noclip then
 			for _, part in ipairs(char:GetDescendants()) do
 				if part:IsA("BasePart") then
 					part.CanCollide = false
 				end
 			end
-		end)
-	else
-		if noclipConn then
-			noclipConn:Disconnect()
-			noclipConn = nil
 		end
-		for _, part in ipairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = true
-			end
-		end
-	end
+	end)
 end
 
 --//Load Configs
