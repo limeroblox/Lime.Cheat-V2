@@ -96,9 +96,6 @@ VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_Sh
 VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v if UpdateESPVisibility then UpdateESPVisibility() end end })
 
 --// Movement
-MovementTab:CreateToggle({ Name = "Fly", CurrentValue = config.FlyEnabled, Callback = function(v) config.FlyEnabled = v if FLY then FLY(v, config.NoClipFlyEnabled) end end, })
-MovementTab:CreateToggle({ Name = "NoClip Fly", CurrentValue = config.NoClipFlyEnabled, Callback = function(v) config.NoClipFlyEnabled = v if config.FlyEnabled and FLY then FLY(true, v) end end, })
-
 
 --// R6 limbs
 local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
@@ -523,89 +520,6 @@ local function ESP(plr)
         SafeSetVisibility({lib.name, lib.distance}, config.ESP_ShowName)
     end)
 end
-
-local flyConn
-local function FLY(enable, noclip)
-    local player = game.Players.LocalPlayer
-    local char = player and player.Character
-    if not char then return end
-
-    local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
-    if not root then return end
-
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid then humanoid.PlatformStand = enable end
-
-    if not enable then
-        if flyConn then
-            flyConn:Disconnect()
-            flyConn = nil
-        end
-        if root:FindFirstChild("FlyVel") then root.FlyVel:Destroy() end
-        if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
-
-        -- Restore collisions if noclip was on
-        if noclip then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
-        return
-    end
-
-    -- Create BodyVelocity and BodyGyro
-    local bv = Instance.new("BodyVelocity")
-    bv.Name = "FlyVel"
-    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bv.Velocity = Vector3.new(0, 0, 0)
-    bv.Parent = root
-
-    local bg = Instance.new("BodyGyro")
-    bg.Name = "FlyGyro"
-    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bg.P = 1e5
-    bg.D = 1e3
-    bg.Parent = root
-
-    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-    local controlModule
-
-    if isMobile then
-        local playerModule = player.PlayerScripts:WaitForChild("PlayerModule")
-        controlModule = require(playerModule:WaitForChild("ControlModule"))
-    end
-
-    flyConn = RunService.RenderStepped:Connect(function()
-        local cam = workspace.CurrentCamera
-        local moveVec = Vector3.new()
-
-        if isMobile and controlModule then
-            moveVec = controlModule:GetMoveVector()
-        else
-            local success, ctrl = pcall(function()
-                local playerModule = player.PlayerScripts:WaitForChild("PlayerModule")
-                return require(playerModule):GetControls()
-            end)
-            if success and ctrl then
-                moveVec = ctrl:GetMoveVector()
-            end
-        end
-
-        bv.Velocity = cam.CFrame:VectorToWorldSpace(moveVec) * 100
-        bg.CFrame = cam.CFrame
-
-        if noclip then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end
-    end)
-end
-
 
 --//Load Configs
 Rayfield:LoadConfiguration()
