@@ -101,22 +101,35 @@ MovementTab:CreateToggle({
     CurrentValue = config.FlyEnabled,
     Callback = function(v)
         config.FlyEnabled = v
-        if FLY then
-            FLY(v, config.NoClipFlyEnabled)
+        if v then
+            if isMobile then
+                mobilefly(LocalPlayer, false)
+            else
+                FLY()
+            end
+        else
+            NOFLY()
         end
-    end,
+    end
 })
 
 MovementTab:CreateToggle({
-    Name = "NoClip (Fly + Noclip)",
+    Name = "Enable Noclip With Flying",
     CurrentValue = config.NoClipFlyEnabled,
     Callback = function(v)
         config.NoClipFlyEnabled = v
-        if config.FlyEnabled and FLY then
-            FLY(true, v)
+        if v then
+            if isMobile then
+                mobilefly(LocalPlayer, true)
+            else
+                FLY()
+            end
+        else
+            NOFLY()
         end
-    end,
+    end
 })
+
 
 --// R6 limbs
 local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
@@ -542,96 +555,94 @@ local function ESP(plr)
     end)
 end
 
-local flyConn
-local function FLY(enable, noclip)
-    local char = game.Players.LocalPlayer.Character
-    if not char then
-        print("No character")
-        return
-    end
+local FLYING = false
+local flyKeyDown, flyKeyUp
+local iyflyspeed = 50 -- your fly speed value
+local vfly = false -- vehicle fly false, for your context
 
-    local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
-    if not root then
-        print("No root part")
-        return
-    end
+local function getRoot(char)
+    return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+end
 
-    local human = char:FindFirstChildOfClass("Humanoid")
-    if human then human.PlatformStand = enable end
+local function FLY()
+    repeat task.wait() until LocalPlayer and LocalPlayer.Character and getRoot(LocalPlayer.Character) and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    repeat task.wait() until mouse
 
-    if not enable then
-        if root:FindFirstChild("FlyVel") then root.FlyVel:Destroy() end
-        if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
-        if flyConn then flyConn:Disconnect() flyConn = nil end
-        -- Restore CanCollide to true on disable (just in case)
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
-        print("Fly disabled")
-        return
-    end
+    if flyKeyDown then flyKeyDown:Disconnect() end
+    if flyKeyUp then flyKeyUp:Disconnect() end
 
-    local bv = Instance.new("BodyVelocity")
-    bv.Name = "FlyVel"
-    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bv.Velocity = Vector3.zero
-    bv.Parent = root
+    local T = getRoot(LocalPlayer.Character)
+    local CONTROL = {F = 0, B = 0, L = 0, R = 0, Q = 0, E = 0}
+    local lCONTROL = {F = 0, B = 0, L = 0, R = 0, Q = 0, E = 0}
+    local SPEED = 0
 
-    local bg = Instance.new("BodyGyro")
-    bg.Name = "FlyGyro"
-    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bg.P = 1e5
-    bg.Parent = root
+    FLYING = true
 
-    local UserInputService = game:GetService("UserInputService")
-    local RunService = game:GetService("RunService")
-    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+    local BG = Instance.new("BodyGyro")
+    local BV = Instance.new("BodyVelocity")
+    BG.P = 9e4
+    BG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    BG.CFrame = T.CFrame
+    BG.Parent = T
 
-    local controlModule
-    if isMobile then
-        local PlayerModule = game.Players.LocalPlayer.PlayerScripts:WaitForChild("PlayerModule")
-        controlModule = require(PlayerModule:WaitForChild("ControlModule"))
-    end
+    BV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    BV.Velocity = Vector3.new(0, 0, 0)
+    BV.Parent = T
 
-    flyConn = RunService.RenderStepped:Connect(function()
-        local cam = workspace.CurrentCamera
-        local moveVec = Vector3.zero
-
-        if isMobile and controlModule then
-            moveVec = controlModule:GetMoveVector()
-        else
-            local success, ctrl = pcall(function()
-                local PlayerModule = game.Players.LocalPlayer.PlayerScripts:WaitForChild("PlayerModule")
-                return require(PlayerModule):GetControls()
-            end)
-            if success and ctrl then
-                moveVec = ctrl:GetMoveVector()
-            else
-                print("Failed to get controls")
-            end
-        end
-
-        if moveVec == Vector3.zero then
-            -- If no movement input, set velocity zero to keep hovering
-            bv.Velocity = Vector3.new(0, 0, 0)
-        else
-            bv.Velocity = cam.CFrame:VectorToWorldSpace(moveVec) * 100
-        end
-
-        bg.CFrame = cam.CFrame
-
-        if noclip then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end
+    flyKeyDown = mouse.KeyDown:Connect(function(KEY)
+        if KEY:lower() == 'w' then CONTROL.F = iyflyspeed end
+        if KEY:lower() == 's' then CONTROL.B = -iyflyspeed end
+        if KEY:lower() == 'a' then CONTROL.L = -iyflyspeed end
+        if KEY:lower() == 'd' then CONTROL.R = iyflyspeed end
+        if KEY:lower() == 'e' then CONTROL.Q = iyflyspeed * 2 end
+        if KEY:lower() == 'q' then CONTROL.E = -iyflyspeed * 2 end
+        pcall(function() workspace.CurrentCamera.CameraType = Enum.CameraType.Track end)
     end)
 
-    print("Fly enabled with noclip:", noclip)
+    flyKeyUp = mouse.KeyUp:Connect(function(KEY)
+        if KEY:lower() == 'w' then CONTROL.F = 0 end
+        if KEY:lower() == 's' then CONTROL.B = 0 end
+        if KEY:lower() == 'a' then CONTROL.L = 0 end
+        if KEY:lower() == 'd' then CONTROL.R = 0 end
+        if KEY:lower() == 'e' then CONTROL.Q = 0 end
+        if KEY:lower() == 'q' then CONTROL.E = 0 end
+    end)
+
+    spawn(function()
+        while FLYING do
+            task.wait()
+            local root = getRoot(LocalPlayer.Character)
+            if not root then break end
+
+            if CONTROL.L + CONTROL.R ~= 0 or CONTROL.F + CONTROL.B ~= 0 or CONTROL.Q + CONTROL.E ~= 0 then
+                SPEED = 50
+            elseif SPEED ~= 0 then
+                SPEED = 0
+            end
+
+            if CONTROL.L + CONTROL.R ~= 0 or CONTROL.F + CONTROL.B ~= 0 or CONTROL.Q + CONTROL.E ~= 0 then
+                BV.Velocity = ((workspace.CurrentCamera.CFrame.LookVector * (CONTROL.F + CONTROL.B)) + ((workspace.CurrentCamera.CFrame * CFrame.new(CONTROL.L + CONTROL.R, (CONTROL.F + CONTROL.B + CONTROL.Q + CONTROL.E) * 0.2, 0).p) - workspace.CurrentCamera.CFrame.p)) * SPEED
+            elseif SPEED ~= 0 then
+                BV.Velocity = ((workspace.CurrentCamera.CFrame.LookVector * (lCONTROL.F + lCONTROL.B)) + ((workspace.CurrentCamera.CFrame * CFrame.new(lCONTROL.L + lCONTROL.R, (lCONTROL.F + lCONTROL.B + CONTROL.Q + CONTROL.E) * 0.2, 0).p) - workspace.CurrentCamera.CFrame.p)) * SPEED
+            else
+                BV.Velocity = Vector3.new(0, 0, 0)
+            end
+
+            BG.CFrame = workspace.CurrentCamera.CFrame
+            lCONTROL = {F = CONTROL.F, B = CONTROL.B, L = CONTROL.L, R = CONTROL.R, Q = CONTROL.Q, E = CONTROL.E}
+        end
+    end)
+end
+
+local function NOFLY()
+    FLYING = false
+    if flyKeyDown then flyKeyDown:Disconnect() flyKeyDown = nil end
+    if flyKeyUp then flyKeyUp:Disconnect() flyKeyUp = nil end
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then humanoid.PlatformStand = false end
+    end
+    pcall(function() workspace.CurrentCamera.CameraType = Enum.CameraType.Custom end)
 end
 
 --//Load Configs
