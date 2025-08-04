@@ -545,8 +545,16 @@ end
 local flyConn
 local function FLY(enable, noclip)
     local char = game.Players.LocalPlayer.Character
-    local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
-    if not char or not root then return end
+    if not char then
+        print("No character")
+        return
+    end
+
+    local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+    if not root then
+        print("No root part")
+        return
+    end
 
     local human = char:FindFirstChildOfClass("Humanoid")
     if human then human.PlatformStand = enable end
@@ -555,18 +563,25 @@ local function FLY(enable, noclip)
         if root:FindFirstChild("FlyVel") then root.FlyVel:Destroy() end
         if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
         if flyConn then flyConn:Disconnect() flyConn = nil end
+        -- Restore CanCollide to true on disable (just in case)
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        print("Fly disabled")
         return
     end
 
     local bv = Instance.new("BodyVelocity")
     bv.Name = "FlyVel"
-    bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
     bv.Velocity = Vector3.zero
     bv.Parent = root
 
     local bg = Instance.new("BodyGyro")
     bg.Name = "FlyGyro"
-    bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
+    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
     bg.P = 1e5
     bg.Parent = root
 
@@ -593,10 +608,18 @@ local function FLY(enable, noclip)
             end)
             if success and ctrl then
                 moveVec = ctrl:GetMoveVector()
+            else
+                print("Failed to get controls")
             end
         end
 
-        bv.Velocity = cam.CFrame:VectorToWorldSpace(moveVec) * 100
+        if moveVec == Vector3.zero then
+            -- If no movement input, set velocity zero to keep hovering
+            bv.Velocity = Vector3.new(0, 0, 0)
+        else
+            bv.Velocity = cam.CFrame:VectorToWorldSpace(moveVec) * 100
+        end
+
         bg.CFrame = cam.CFrame
 
         if noclip then
@@ -607,6 +630,8 @@ local function FLY(enable, noclip)
             end
         end
     end)
+
+    print("Fly enabled with noclip:", noclip)
 end
 
 --//Load Configs
