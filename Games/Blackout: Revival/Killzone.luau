@@ -46,7 +46,10 @@ local config = {
     ESP_ShowBox = true,
     ESP_ShowTracer = true,
     ESP_ShowHealth = true,
-    ESP_ShowName = true
+    ESP_ShowName = true,
+
+    flyEnabled = false,
+    noclipEnabled = false
 }
 
 local Settings = {
@@ -63,6 +66,7 @@ local Settings = {
 local Tab 		= Window:CreateTab("KillAura", 4483362458)
 local AimbotTab 	= Window:CreateTab("Aimbot", 4483362458)
 local VisualsTab 	= Window:CreateTab("Visuals", 4483362458)
+local MovementTab 	= Window:CreateTab("Movement", 4483362458)
 
 --// Aimbot
 AimbotTab:CreateToggle({ Name = "Enable", CurrentValue = false, Callback = function(v) config.AimbotEnabled = v end })
@@ -87,6 +91,11 @@ VisualsTab:CreateToggle({ Name = "Show Boxes", CurrentValue = config.ESP_ShowBox
 VisualsTab:CreateToggle({ Name = "Show Tracers", CurrentValue = config.ESP_ShowTracer, Callback = function(v) config.ESP_ShowTracer = v if UpdateESPVisibility then UpdateESPVisibility() end end })
 VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_ShowHealth, Callback = function(v) config.ESP_ShowHealth = v if UpdateESPVisibility then UpdateESPVisibility() end end })
 VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v if UpdateESPVisibility then UpdateESPVisibility() end end })
+
+--// Movement
+MovementTab:CreateToggle({ Name = "Fly", CurrentValue = config.toggleFly, Callback = function(v) config.toggleFly = v handleFly() end })
+MovementTab:CreateToggle({ Name = "Noclip", CurrentValue = config.toggleNoclip, Callback = function(v) config.toggleNoclip = v handleNoclip() end })
+
 
 --// R6 limbs
 local r6Limbs 		= {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
@@ -535,6 +544,51 @@ Players.PlayerRemoving:Connect(function(plr)
         ESPObjects[plr] = nil
     end
 end)
+
+local noclipConn
+
+local function handleFly()
+	local char = LocalPlayer.Character
+	if not char then return end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	if config.toggleFly then
+		humanoid.Sit = true
+		humanoid:ChangeState(Enum.HumanoidStateType.Flying)
+		task.wait(0.2)
+		humanoid.Sit = false
+	else
+		humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+	end
+end
+
+local function handleNoclip()
+	local char = LocalPlayer.Character
+	if not char then return end
+
+	if config.toggleNoclip then
+		if noclipConn then noclipConn:Disconnect() end
+		noclipConn = RunService.Stepped:Connect(function()
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+				end
+			end
+		end)
+	else
+		if noclipConn then
+			noclipConn:Disconnect()
+			noclipConn = nil
+		end
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = true
+			end
+		end
+	end
+end
 
 --//Load Configs
 Rayfield:LoadConfiguration()
