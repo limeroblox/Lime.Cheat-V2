@@ -48,10 +48,7 @@ local config = {
     ESP_ShowBox = true,
     ESP_ShowTracer = true,
     ESP_ShowHealth = true,
-    ESP_ShowName = true,
-
-    FlyEnabled = false,
-    NoClipFlyEnabled = false
+    ESP_ShowName = true
 
 }
 
