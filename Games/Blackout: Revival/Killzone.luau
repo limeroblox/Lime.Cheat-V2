@@ -97,21 +97,25 @@ VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_
 
 --// Movement
 MovementTab:CreateToggle({
-	Name = "Fly",
-	CurrentValue = config.FlyEnabled,
-	Callback = function(v)
-		config.FlyEnabled = v
-		FLY(v, false)
-	end
+    Name = "Fly",
+    CurrentValue = config.FlyEnabled,
+    Callback = function(v)
+        config.FlyEnabled = v
+        if FLY then
+            FLY(v, config.NoClipFlyEnabled)
+        end
+    end,
 })
 
 MovementTab:CreateToggle({
-	Name = "NoClip Fly",
-	CurrentValue = config.NoClipFlyEnabled,
-	Callback = function(v)
-		config.NoClipFlyEnabled = v
-		FLY(v, true)
-	end
+    Name = "NoClip (Fly + Noclip)",
+    CurrentValue = config.NoClipFlyEnabled,
+    Callback = function(v)
+        config.NoClipFlyEnabled = v
+        if config.FlyEnabled and FLY then
+            FLY(true, v)
+        end
+    end,
 })
 
 --// R6 limbs
@@ -538,61 +542,71 @@ local function ESP(plr)
     end)
 end
 
+local flyConn
 local function FLY(enable, noclip)
-	local char = LocalPlayer.Character
-	local root = getRoot(char)
-	if not char or not root then return end
+    local char = game.Players.LocalPlayer.Character
+    local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
+    if not char or not root then return end
 
-	local human = char:FindFirstChildOfClass("Humanoid")
-	if human then human.PlatformStand = enable end
+    local human = char:FindFirstChildOfClass("Humanoid")
+    if human then human.PlatformStand = enable end
 
-	-- Cleanup on disable
-	if not enable then
-		if root:FindFirstChild("FlyVel") then root.FlyVel:Destroy() end
-		if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
-		if flyConn then flyConn:Disconnect() flyConn = nil end
-		return
-	end
+    if not enable then
+        if root:FindFirstChild("FlyVel") then root.FlyVel:Destroy() end
+        if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
+        if flyConn then flyConn:Disconnect() flyConn = nil end
+        return
+    end
 
-	local bv = Instance.new("BodyVelocity")
-	bv.Name = "FlyVel"
-	bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-	bv.Velocity = Vector3.zero
-	bv.Parent = root
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "FlyVel"
+    bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+    bv.Velocity = Vector3.zero
+    bv.Parent = root
 
-	local bg = Instance.new("BodyGyro")
-	bg.Name = "FlyGyro"
-	bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-	bg.P = 1e5
-	bg.Parent = root
+    local bg = Instance.new("BodyGyro")
+    bg.Name = "FlyGyro"
+    bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
+    bg.P = 1e5
+    bg.Parent = root
 
-	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-	local controlModule = isMobile and require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule")) or nil
+    local UserInputService = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
-	flyConn = RunService.RenderStepped:Connect(function()
-		local cam = workspace.CurrentCamera
-		local moveVec
+    local controlModule
+    if isMobile then
+        local PlayerModule = game.Players.LocalPlayer.PlayerScripts:WaitForChild("PlayerModule")
+        controlModule = require(PlayerModule:WaitForChild("ControlModule"))
+    end
 
-		if isMobile and controlModule then
-			moveVec = cam.CFrame:VectorToWorldSpace(controlModule:GetMoveVector())
-		else
-			pcall(function()
-				local ctrl = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule")):GetControls()
-				moveVec = cam.CFrame:VectorToWorldSpace(ctrl:GetMoveVector())
-			end)
-		end
+    flyConn = RunService.RenderStepped:Connect(function()
+        local cam = workspace.CurrentCamera
+        local moveVec = Vector3.zero
 
-		bv.Velocity = moveVec * 100
-		bg.CFrame = cam.CFrame
+        if isMobile and controlModule then
+            moveVec = controlModule:GetMoveVector()
+        else
+            local success, ctrl = pcall(function()
+                local PlayerModule = game.Players.LocalPlayer.PlayerScripts:WaitForChild("PlayerModule")
+                return require(PlayerModule):GetControls()
+            end)
+            if success and ctrl then
+                moveVec = ctrl:GetMoveVector()
+            end
+        end
 
-		if noclip then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				end
-			end
-		end
-	end)
+        bv.Velocity = cam.CFrame:VectorToWorldSpace(moveVec) * 100
+        bg.CFrame = cam.CFrame
+
+        if noclip then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
 end
 
 --//Load Configs
