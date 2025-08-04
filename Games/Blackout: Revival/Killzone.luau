@@ -96,27 +96,8 @@ VisualsTab:CreateToggle({ Name = "Show Health Bar", CurrentValue = config.ESP_Sh
 VisualsTab:CreateToggle({ Name = "Show Player Names", CurrentValue = config.ESP_ShowName, Callback = function(v) config.ESP_ShowName = v if UpdateESPVisibility then UpdateESPVisibility() end end })
 
 --// Movement
-MovementTab:CreateToggle({
-    Name = "Fly",
-    CurrentValue = config.FlyEnabled,
-    Callback = function(v)
-        config.FlyEnabled = v
-        if FLY then
-            FLY(v, config.NoClipFlyEnabled)
-        end
-    end,
-})
-
-MovementTab:CreateToggle({
-    Name = "NoClip Fly",
-    CurrentValue = config.NoClipFlyEnabled,
-    Callback = function(v)
-        config.NoClipFlyEnabled = v
-        if config.FlyEnabled and FLY then
-            FLY(true, v)
-        end
-    end,
-})
+MovementTab:CreateToggle({ Name = "Fly", CurrentValue = config.FlyEnabled, Callback = function(v) config.FlyEnabled = v if FLY then FLY(v, config.NoClipFlyEnabled) end end, })
+MovementTab:CreateToggle({ Name = "NoClip Fly", CurrentValue = config.NoClipFlyEnabled, Callback = function(v) config.NoClipFlyEnabled = v if config.FlyEnabled and FLY then FLY(true, v) end end, })
 
 
 --// R6 limbs
